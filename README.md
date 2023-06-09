@@ -51,11 +51,9 @@ The expression must be a valid and complete C++ expression.
 _This rule exists to determine when a `)` can terminate the place-holder._
 
   
-### `$` C++ line `\n`
+### `$ ` C++ line `\n`
 Short pieces of verbatim C++ code can be added to the generated code using this syntax.
-  
-The first character of the C++ line can't be `{`, `(`, `$` or `>`. 
-  
+    
 Syntax
 ------
   
@@ -67,7 +65,7 @@ command := text | expression | format | cpp-line | dollar-escape | newline-escap
   
 expression := '${' cpp-expression '}'
 format := '$(' cpp-arguments ')'
-cpp-line := '$' cpp-verbatim '\n'
+cpp-line := '$ ' cpp-verbatim '\n'
 dollar-escape := '$$'
 newline-escape := '$' [ \t\r] [\n\f\v]
 text := [^$]*
