@@ -16,50 +16,63 @@ hikocsp --input=filename.csp --output=filename.hpp
   
 CSP Template format
 -------------------
-  
-### `$<` block `$>`
-A CSP template starts in C++ verbatim-mode, it switches to block-mode when the
-parser encounters `$<` outside of a quoted-string. The parser switches back
-to C++ verbatim-mode when it encounters `$>`.
-  
-All characters in C++ verbatim-mode are directly placed in the generated code.
-  
-The block-mode contains text, but also placeholders and short pieces of C++ code.
-Code will be generated for text and placeholders to write to the `_out` variable.
-The `_out` variable is of type `std::string` (or equivilant).
-  
-### `${` expression `}`
-The placeholder is for writing the result of a C++ expression to `_out`.
-The resulting generated code of a single-expression place-holder is as follows:
-  
-```cpp
-_out += std::format("{}", expression);
-```
 
-The expression must be a valid and complete C++ expression.
-_This rule exists to determine when a `}` can terminate the place-holder._
+### verbatim C++
+By default the CSP-parser starts in verbatim mode. Verbatim C++ code will be copied
+directly into the generated code.
+
+The verbatim C++ code is terminated when `$<` is found outside of string-literals.
+
+### text
+A text block is started after the `$<` which ends the varbatim C++. The text block
+is terminated when `$>` is found, after which verbatim C++ starts again.
+
+The generated code will append the text the `_out` std::string variable.
+
+A text block may also contain:
+ - placeholders,
+ - C++ line,
+ - dollar escape,
+ - new-line escape.
   
-### `${` format-string `,` expression... `}`
-A placeholder with multiple arguments can be used to format text using a format-string.
-The resulting generated code of a format-placeholder is as follows:
-  
+### placeholder
+There are two types of placeholders:
+ - *Simple:* `${` expression `}`
+ - *Format:* `${` format-string ( `,` expression... )\* `}`
+
+The *simple-placeholder* formats an expression with default formatting
+using and is syntactic sugar for the equivilant *format-placeholder*: `${"{}", ` expression `}`
+
+The *format-placeholder* formats one or more expression using a format-string for std::format().
+The result of std::format() will be written to the `_out` std::string variable.
+
+The following code will be generated for a placeholder:
+
 ```cpp
 _out += std::format(format-string, expression...);
 ```
 
-The expression must be a valid and complete C++ expression.
-_This rule exists to determine when a `}` can terminate the place-holder._
+The expressions may be any valid C++ expression. The CSP-parser will therefor ignore the closing
+brace '}' if it is contained within a string-literal, or inside a sub-expression.
 
-### `$` C++ line `\n`
-Short pieces of verbatim C++ code can be added to the generated code using this syntax.
+### C++ line
+A single line of C++ can be inserted in a text-block. It starts with a `$` and ends in
+the line-feed. This code is directly copied into the generated code.
+
+A C++ line can not start with the following characters: `$`, `{`, `>`. If you
+need to use these charaters then you may add a white-space before this character.
+
+### dollar escape
+
+### new-line escape
     
 Syntax
 ------
   
 ```
-template := ( verbatim | block )*
- 
-block := '$<' command* '$>'
+template := verbatim ( '$<' text '$>' verbatim )* ( '$<' text )?
+
+text := '$<' command* '$>'
 command := text | placeholder | cpp-line | dollar-escape | newline-escape
   
 text := [^$]*
