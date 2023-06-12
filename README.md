@@ -62,9 +62,15 @@ the line-feed. This code is directly copied into the generated code.
 A C++ line can not start with the following characters: `$`, `{`, `>`. If you
 need to use these charaters then you may add a white-space before this character.
 
-### dollar escape
+### escape
+Use `$$` to escape a dollar, i.e. to append a dollar to the `_out` variable, 
 
 ### new-line escape
+A `$` at the end of the line will supress the line-feed and optional white-spaces.
+
+This is a very useful feature to control the text being appended to `_out`.
+
+Techniqually this command does not exist and is a side effect of an empty C++ line.
     
 Syntax
 ------
@@ -73,13 +79,12 @@ Syntax
 template := verbatim ( '$<' text '$>' verbatim )* ( '$<' text )?
 
 text := '$<' command* '$>'
-command := text | placeholder | cpp-line | dollar-escape | newline-escape
+command := text | placeholder | cpp-line | escape
   
 text := [^$]*
 placeholder := '${' expression ( ',' expression )* '}'
 cpp-line := '$' [^{>$] verbatim '\n'
-dollar-escape := '$$'
-newline-escape := '$' [ \t\r] [\n\f\v]
+escape := '$$'
 
 # cpp-expression is a C++ expression.
 # A C++ expression may be terminated when the resulting expression is valid.
