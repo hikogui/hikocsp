@@ -36,11 +36,11 @@ A text block may also contain:
   
 ### placeholder
 There are two types of placeholders:
- - *Simple:* `${` expression `}`
- - *Format:* `${` format-string ( `,` expression... )\* `}`
+ - *Simple:* `${` expression ( `` ` `` expression )\* `}`
+ - *Format:* `${` format-string ( `,` expression... )\* ( `` ` `` expression )\* `}`
 
 The *simple-placeholder* formats an expression with default formatting
-using and is syntactic sugar for the equivilant *format-placeholder*: `${"{}", ` expression `}`
+using and is syntactic sugar for the equivalent *format-placeholder*: `${"{}", ` expression `}`
 
 The *format-placeholder* formats one or more expression using a format-string for std::format().
 The result of std::format() will be written to the `_out` std::string variable.
