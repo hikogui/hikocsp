@@ -32,8 +32,7 @@ The generated code will append the text the `_out` std::string variable.
 A text block may also contain:
  - placeholders,
  - C++ line,
- - dollar escape,
- - new-line escape.
+ - escape,
   
 ### placeholder
 There are two types of placeholders:
@@ -65,34 +64,29 @@ need to use these charaters then you may add a white-space before this character
 ### escape
 Use `$$` to escape a dollar, i.e. to append a dollar to the `_out` variable, 
 
-### new-line escape
 A `$` at the end of the line will supress the line-feed and optional white-spaces.
-
 This is a very useful feature to control the text being appended to `_out`.
-
 Techniqually this command does not exist and is a side effect of an empty C++ line.
     
 Syntax
 ------
   
 ```
-template := verbatim ( '$<' text '$>' verbatim )* ( '$<' text )?
+# cpp-char may include '$<' inside C++ string-literals.
+csp-file := ( cpp-char* | template )*
 
-text := '$<' command* '$>'
-command := text | placeholder | cpp-line | escape
-  
+template := '$<' ( text | escape | placeholder | cpp-line )* '$>'
+
 text := [^$]*
-placeholder := '${' expression ( ',' expression )* '}'
-cpp-line := '$' [^{>$] verbatim '\n'
 escape := '$$'
 
-# cpp-expression is a C++ expression.
-# A C++ expression may be terminated when the resulting expression is valid.
-expression := ...
+# cpp-char may include commas ''' and close-braces '}' inside C++ string-literals and sub-expressions.
+placeholder := '${' cpp-char* ( ',' cpp-char* )* '}'
 
-# cpp-verbatim is a piece of C++ code.
-# Verbatim C++ code may be terminated at any time, except inside a quoted string.
-verbatim := ...
+cpp-line := '$' cpp-char* '\n'
+
+# Any character, however C++ string-literals and sub-expressions are being tracked.
+cpp-char := .
 ```
   
   
