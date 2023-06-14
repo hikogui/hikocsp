@@ -36,23 +36,33 @@ A text block may also contain:
   
 ### placeholder
 There are two types of placeholders:
- - *Simple:* `${` expression ( `` ` `` expression )\* `}`
- - *Format:* `${` format-string ( `,` expression... )\* ( `` ` `` expression )\* `}`
+ - *Simple:* `${` expression ( `` ` `` filter )\* `}`
+ - *Format:* `${` format-string ( `,` expression... )\* ( `` ` `` filter )\* `}`
 
 The *simple-placeholder* formats an expression with default formatting
-using and is syntactic sugar for the equivalent *format-placeholder*: `${"{}", ` expression `}`
+using and is syntactic sugar for the equivalent *format-placeholder*: `${"{}", ` expression ( `` ` `` filter )\* `}`
 
 The *format-placeholder* formats one or more expression using a format-string for std::format().
 The result of std::format() will be written to the `_out` std::string variable.
 
-The following code will be generated for a placeholder:
+After formatting the text is passed through the filters specified in the
+placeholder; or if no filter is specified the formatted text is filtered by
+`_out_filter`.
+
+The following filters are included:
+ - `hi::sgml_escape`: For escaping SGML, HTML and XML text.
+ - `hi::sgml_param_escape`: For escaping parameters in SGML, HTML and XML tags.
+ - `hi::url_escape`: For escaping URLs.
+ - `hi::null_escape`: Which can be used to bypass the `_out_filter`.
+
+Something like the following code will be generated for a placeholder:
 
 ```cpp
-_out += std::format(format-string, expression...);
+_out = filter...(std::format(format-string, expression...));
 ```
 
-The expressions may be any valid C++ expression. The CSP-parser will therefor ignore the closing
-brace '}' if it is contained within a string-literal, or inside a sub-expression.
+An expression is terminated when one of the following characters appears outside
+sub-expressions and string-literals: `,`, `` ` ``, `}`, `)`, `]`, `$` or `@`.
 
 ### C++ line
 A single line of C++ can be inserted in a text-block. It starts with a `$` and ends in

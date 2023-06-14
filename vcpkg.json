@@ -1,0 +1,9 @@
+{
+  "name": "hikocsp",
+  "version": "0.1.0",
+  "description": "A C++ text-template system which generates C++ code.",
+  "homepage": "https://github.com/hikogui/hikocsp",
+  "license": "BSL-1.0",
+  "supports": "windows & x64",
+  "dependencies": []
+}
