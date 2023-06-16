@@ -2,29 +2,7 @@
 /** @file csp_parser.hpp
  *
  *
- * ```
- * #include <string>
- * #include <format>
- * #include <vector>
- *
- * [[nodiscard]] std::generator<std::string> generate_page(std::vector<int> list, int b) noexcept
- * {
- * $(hi::sgml_escape,
- * <html>
- *   <head><title>Page</title></head>
- *   <body>
- *     A list of values.
- *     <li>
- *       $for (auto value: list) {
- *       <ul><a href="value_page?${value `hi::url_escape}">${value} + ${b} = ${value + b}</a></ul>
- *       $}
- *     <li>
- *   </body>
- * </html>
- * $)
- * }
- *
- * ```
+ 
  */
 
 #pragma once
