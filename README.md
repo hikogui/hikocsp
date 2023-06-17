@@ -6,96 +6,99 @@ hikocsp.exe usage
 
 ### Synopsis
 ```
-hikocsp --input=filename.csp --output=filename.hpp
+hikocsp [ --output=filename.hpp ] filename.csp
+hikocsp --help
 ```
 
-  Argument           | Description
- :------------------ |:-----------------------
-  \-\-input=<path>   | The filename of the template. recommended extension is .csp
-  \-\-output=<path>  | The filename of the result. extension: .cpp, .hpp, .ixx
+  Argument                | Description
+ :----------------------- |:-----------------------
+  \-h, \-\-help           | Print the help page to stderr.
+  \-o, \-\-output=<path>  | The filename of the result. Otherwise stdout is used.
   
 CSP Template format
 -------------------
 
 ### Verbatim C++
-By default the CSP-parser starts in verbatim C++. Verbatim C++ code will be
+The template starts in verbatim C++ mode. Verbatim C++ code will be
 copied directly into the generated code.
 
-### $output
-The `$output` determines how the generated code writes text and placeholders
-to the output.
-
-If `$output` is the special value `co_yield`. Then text and placeholders are
-yielded from a coroutine as `std::string`.
-
-Otherwise `$output` will be a name of a non-const variable. `operator+=` is used
-on this variable to append text and placeholders as a `std::string`.
-
-It is recommended to use a parameter as output value, so that a `std::string`
-allocation can be reused.
-
-### $filter
-
 ### Text
-A text block is started when `{{` is found in verbatim C++.
-If there are more than two consecutive open braces `{` are found, then the last
-two braces count as the terminator and the other open braces are still part of
-verbatim C++.
+A text block is started when `{{` is found in verbatim C++ code.
+If there are more than two consecutive open braces, then the last
+two braces count as the terminator and the previous open braces are still part
+of the verbatim C++ code.
 
 The text block is terminated when `}}` is found. If more than two consecutive
-close braces `}` are found then the first two braces count as the terminator
-and the other close braces are part of verbatim C++.
+close braces are found then the first two braces count as the terminator
+and the subsequent close braces are part of the verbatim C++ code.
 
-The `$output` determines how the generated code writes the text block.
-
-A text block may also contain:
- - placeholders,
- - C++ line,
- - escape,
+The generated code will use `co_yield` to output the text from the current
+co-routine.
   
 ### placeholder
-There are two types of placeholders:
+There are several versions of placeholders:
+ - *Empty:* `${}`
+ - *Escape:* `${` string-literal `}`
  - *Simple:* `${` expression ( `` ` `` filter )\* `}`
- - *Format:* `${` format-string ( `,` expression... )\* ( `` ` `` filter )\* `}`
+ - *Format:* `${` format-string ( `,` expression )\* ( `` ` `` filter )\* `}`
+ - *Filter:* `${` `` ` `` filter ( `` ` `` filter )\* `}`
 
-The *simple-placeholder* formats an expression with default formatting
-using and is syntactic sugar for the equivalent *format-placeholder*: `${"{}", ` expression ( `` ` `` filter )\* `}`
+The *empty-placeholder* does nothing. It was added so that a placeholder can
+be placed during development of a template without having any side effects.
 
-The *format-placeholder* formats one or more expression using a format-string for std::format().
-The result of std::format() will be written to the `_out` std::string variable.
+The *escape-placeholder* allows the placement of special character sequences
+like `$`, `${` and `}}`. This is a special case of the *simple-placeholder*
+where the text is not passed through any filters to allow the implementation
+to perform extra optimizations. The string-literal must start and end in
+a double quote `"` without any white-spaces.
 
-After formatting the text is passed through the filters specified in the
-placeholder; or if no filter is specified the formatted text is filtered by
-`_out_filter`.
+The *simple-placeholder* is syntactic sugar for the following
+*format-placeholder*:
+    `${"{}", ` expression ( `` ` `` filter )\* `}`
 
-The following filters are included:
- - `hi::sgml_escape`: For escaping SGML, HTML and XML text.
- - `hi::sgml_param_escape`: For escaping parameters in SGML, HTML and XML tags.
- - `hi::url_escape`: For escaping URLs.
- - `hi::null_escape`: Which can be used to bypass the `_out_filter`.
+The *format-placeholder* formats one or more expression using a format-string
+for std::format(). Then the result is passed through each filter in
+left-to-right order. The result is then returned from the co-routine using
+`co_yield`. If no explicit filters are specified then the default filters
+are used.
 
-Something like the following code will be generated for a placeholder:
+Filters are called with a single `std::string` argument and should return a
+`std::string` argument. The filter expression in a placeholder may be any
+C++ expression which resolves into a callable object. An empty filter expression
+(which consists of just the leading back-tick `` ` ``) is replaced with the
+following lambda:
+    `[](auto const &x) { return x; }`.
 
-```cpp
-_out = filter...(std::format(format-string, expression...));
-```
+The *filter-placeholder* replaces the default filters to be used in subsequent
+placeholders that do not have explicit filters specified.
 
-An expression is terminated when one of the following characters appears outside
-sub-expressions and string-literals: `,`, `` ` ``, `}`, `)`, `]`, `$` or `@`.
+C++ expressions (including *expression*, *format-string* and *filter*) are
+terminated when one of the following characters appears outside
+of a sub-expression or string-literal:
+    `,`, `` ` ``, `}`, `)`, `]`, `$` or `@`.
 
 ### C++ line
-A single line of C++ can be inserted in a text-block. It starts with a `$` and ends in
-the line-feed. This code is directly copied into the generated code.
+A single line of verbatim C++ code can be use inside a text-block.
+It starts with a `$` and ends in a line-feed `\n`.
+The line of C++ code is directly copied into the generated code.
 
-A C++ line can not start with the following characters: `$`, `{`, `>`. If you
-need to use these charaters then you may add a white-space before this character.
+A C++ line can not start with a open-brace `{` character. If you
+need to use the open-brace then use an extra white space `$ {` to
+differentiate with a placeholder that starts with `${`.
 
-### escape
-Use `$$` to escape a dollar, i.e. to append a dollar to the `_out` variable, 
+The C++ line can also be used to consume the new-line character at the end
+of a piece of text to control when line-feeds that will appear in the output.
+For example to generate a sequence of numbers on a single line:
 
-A `$` at the end of the line will supress the line-feed and optional white-spaces.
-This is a very useful feature to control the text being appended to `_out`.
-Techniqually this command does not exist and is a side effect of an empty C++ line.
+```
+List of numbers: $
+$for (auto i = 0; i != 10; ++i) {
+${i}, $
+$}
+```
+
+If there are only white-space characters in front of the '$' of a C++ line
+then those white-space characters are consumed.
 
 Example
 -------
@@ -129,60 +132,34 @@ ${`hi::sgml_escape`hi::email_escape}
 Syntax
 ------
 
-We are using the following rules for the BNF below:
+We are using the following rules for the BNF grammar below:
  - `*`: zero or more.
- - `+`: one or more.
- - `?`: zero or one.
- - `!`: one, but do not consume.
- - `(` `)`: Group.
+ - `+`: once or more.
+ - `?`: zero or once.
+ - `!`: once, but do not consume.
  - `|`: Or
+ - `(` `)`: Group.
  - `'` `'`: Literal.
 
 ```
 template := ( verbatim | text )*
 
 #
-# Verbatim C++ code which is terminated when '{{' is found at the end of
-# a sequence of end-braces '{' outside of a string-literal.
+# Verbatim C++ code is terminated when '{{' is found at the end of
+# a sequence of end-braces outside of a string-literal.
 #
 verbatim := CHAR+
 
-text :=  '{{' ( CHAR+ | placeholder | verbatim-line )* '}}'
+text :=  '{{' ( CHAR+ | verbatim-line | placeholder )* '}}'
+
+verbatim-line := '$' CHAR* '\n'
+
+placeholder := '${' ( expression ( ',' expression )* )? ( '`' expression )* '}'
 
 #
-# If there is a single expression, then it is converted to a two expression
-# placeholder with the first expression set to "{}".
-#
-# If there are multiple expressions than all the arguments are passed to
-# std::format(). Than the result is passed in left-to-right order through
-# each filter. If no filters are specified than the default filters are used.
-#
-# If there are only filters specified then those are the default filters used
-# from this point forward.
-#
-# An empty placeholder does nothing.
-#
-placeholder := '${' ( expression ( ',' expression )* )? ( '`' filter )* '}'
-
-#
-# A C++ expression wich is terminated when an end-expression character is
+# A C++ expression is terminated when an end-expression character is
 # found outside of a sub-expression or string-literal.
 #
 expression := CHAR* end-expression!
 end-expression := '$' | '`' | '@' | ',' | ']' | ')' | '}'
-
-#
-# An empty filter expression will be replaced by the following lambda:
-#     [](auto const &x) { return x; }.
-#
-filter := expression
-
-#
-# A line of verbatim C++ code. This can also be used to consume white-space
-# at the end of a line, to control when line-feeds appear in the output.
-#
-verbatim-line := '$' CHAR* '\n'
-
 ```
-  
-  
