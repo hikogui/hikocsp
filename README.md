@@ -62,12 +62,6 @@ left-to-right order. The result is then returned from the co-routine using
 *co_yield*. If no explicit filters are specified then the default filters
 are used.
 
-Filters are called with a single *std::string* argument and should return a
-*std::string* argument. The filter expression in a placeholder may be any
-C++ expression which resolves into a callable object. An empty filter expression
-(which consists of just the leading back-tick `` ` ``) is replaced with the
-following lambda:
- - `[](auto const &x) { return x; }`.
 
 The **filter-placeholder** replaces the default filters to be used in subsequent
 placeholders that do not have explicit filters specified.
@@ -76,6 +70,13 @@ C++ expressions (including *expression*, *format-string* and *filter*) are
 terminated when one of the following characters appears outside
 of a sub-expression or string-literal:
  -  `,`, `` ` ``, `}`, `)`, `]`, `$` or `@`.
+
+Filters are called with a single *std::string* argument and should return a
+*std::string* argument. The filter expression in a placeholder may be any
+C++ expression which resolves into a callable object. An empty filter expression
+(which consists of just the leading back-tick `` ` ``) is replaced with the
+following lambda:
+ - `[](auto const &x) { return x; }`.
 
 ### C++ line
 A single line of verbatim C++ code can be use inside a text-block.
