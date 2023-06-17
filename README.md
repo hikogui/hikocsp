@@ -57,13 +57,13 @@ The **simple-placeholder** is syntactic sugar for the following
  - `${"{}", ` expression ( `` ` `` filter )\* `}`
 
 The **format-placeholder** formats one or more expression using a format-string
-for std::format(). Then the result is passed through each filter in
+for *std::format()*. Then the result is passed through each filter in
 left-to-right order. The result is then returned from the co-routine using
-`co_yield`. If no explicit filters are specified then the default filters
+*co_yield*. If no explicit filters are specified then the default filters
 are used.
 
-Filters are called with a single std::string argument and should return a
-std::string argument. The filter expression in a placeholder may be any
+Filters are called with a single *std::string* argument and should return a
+*std::string* argument. The filter expression in a placeholder may be any
 C++ expression which resolves into a callable object. An empty filter expression
 (which consists of just the leading back-tick `` ` ``) is replaced with the
 following lambda:
