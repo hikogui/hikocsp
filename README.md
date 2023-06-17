@@ -46,11 +46,12 @@ There are several versions of placeholders:
 The **empty-placeholder** does nothing. It was added so that a placeholder can
 be placed during development of a template without having any side effects.
 
-The **escape-placeholder** allows the placement of special character sequences
-like `$`, `${` and `}}`. This is a special case of the **simple-placeholder**
-where the text is not passed through any filters to allow the implementation
-to perform extra optimizations. The string-literal must start and end in
-a double quote `"` without any white-spaces.
+The **escape-placeholder** allows the placement of special character sequences,
+for example: `${"$"}` or `${"}}"}`. This is a special case of the
+**simple-placeholder** where the text is not passed through any filters
+to allow the implementation to perform extra optimizations.
+The string-literal must start and end in a double quote `"` without any
+white-spaces.
 
 The **simple-placeholder** is syntactic sugar for the following
 **format-placeholder**:
@@ -61,7 +62,6 @@ for *std::format()*. Then the result is passed through each filter in
 left-to-right order. The result is then returned from the co-routine using
 *co_yield*. If no explicit filters are specified then the default filters
 are used.
-
 
 The **filter-placeholder** replaces the default filters to be used in subsequent
 placeholders that do not have explicit filters specified.
