@@ -40,7 +40,7 @@ There are several versions of placeholders:
  - *Empty:* `${}`
  - *Escape:* `${` string-literal `}`
  - *Simple:* `${` expression ( `` ` `` filter )\* `}`
- - *Format:* `${` format-string ( `,` expression )\* ( `` ` `` filter )\* `}`
+ - *Format:* `${` format-string ( `,` expression )+ ( `` ` `` filter )\* `}`
  - *Filter:* `${` `` ` `` filter ( `` ` `` filter )\* `}`
 
 The *empty-placeholder* does nothing. It was added so that a placeholder can
@@ -54,7 +54,7 @@ a double quote `"` without any white-spaces.
 
 The *simple-placeholder* is syntactic sugar for the following
 *format-placeholder*:
-    `${"{}", ` expression ( `` ` `` filter )\* `}`
+ - `${"{}", ` expression ( `` ` `` filter )\* `}`
 
 The *format-placeholder* formats one or more expression using a format-string
 for std::format(). Then the result is passed through each filter in
@@ -67,7 +67,7 @@ Filters are called with a single `std::string` argument and should return a
 C++ expression which resolves into a callable object. An empty filter expression
 (which consists of just the leading back-tick `` ` ``) is replaced with the
 following lambda:
-    `[](auto const &x) { return x; }`.
+ - `[](auto const &x) { return x; }`.
 
 The *filter-placeholder* replaces the default filters to be used in subsequent
 placeholders that do not have explicit filters specified.
@@ -75,7 +75,7 @@ placeholders that do not have explicit filters specified.
 C++ expressions (including *expression*, *format-string* and *filter*) are
 terminated when one of the following characters appears outside
 of a sub-expression or string-literal:
-    `,`, `` ` ``, `}`, `)`, `]`, `$` or `@`.
+ -  `,`, `` ` ``, `}`, `)`, `]`, `$` or `@`.
 
 ### C++ line
 A single line of verbatim C++ code can be use inside a text-block.
