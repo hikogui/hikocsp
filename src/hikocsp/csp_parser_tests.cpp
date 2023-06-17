@@ -14,7 +14,7 @@ TEST(csp_parser, verbatim)
 
 TEST(csp_parser, verbatim_text)
 {
-    auto s = std::string{"foo$<bar"};
+    auto s = std::string{"foo{{bar"};
     auto tokens = hi::parse_csp(s.data(), s.data() + s.size(), "<none>");
 
     ASSERT_EQ(tokens.size(), 2);
@@ -24,9 +24,22 @@ TEST(csp_parser, verbatim_text)
     ASSERT_EQ(tokens[1].text, "bar");
 }
 
+TEST(csp_parser, verbatim_brace_text)
+{
+    auto s = std::string{"foo{{{bar"};
+    auto tokens = hi::parse_csp(s.data(), s.data() + s.size(), "<none>");
+
+    ASSERT_EQ(tokens.size(), 2);
+    ASSERT_EQ(tokens[0].kind, hi::csp_token::type::verbatim);
+    ASSERT_EQ(tokens[0].text, "foo{");
+    ASSERT_EQ(tokens[1].kind, hi::csp_token::type::text);
+    ASSERT_EQ(tokens[1].text, "bar");
+}
+
+
 TEST(csp_parser, verbatim_text_verbatim)
 {
-    auto s = std::string{"foo$<bar$>baz"};
+    auto s = std::string{"foo{{bar}}baz"};
     auto tokens = hi::parse_csp(s.data(), s.data() + s.size(), "<none>");
 
     ASSERT_EQ(tokens.size(), 3);
@@ -38,9 +51,24 @@ TEST(csp_parser, verbatim_text_verbatim)
     ASSERT_EQ(tokens[2].text, "baz");
 }
 
+TEST(csp_parser, verbatim_brace_text_brace_verbatim)
+{
+    auto s = std::string{"foo{{{bar}}}baz"};
+    auto tokens = hi::parse_csp(s.data(), s.data() + s.size(), "<none>");
+
+    ASSERT_EQ(tokens.size(), 3);
+    ASSERT_EQ(tokens[0].kind, hi::csp_token::type::verbatim);
+    ASSERT_EQ(tokens[0].text, "foo{");
+    ASSERT_EQ(tokens[1].kind, hi::csp_token::type::text);
+    ASSERT_EQ(tokens[1].text, "bar");
+    ASSERT_EQ(tokens[2].kind, hi::csp_token::type::verbatim);
+    ASSERT_EQ(tokens[2].text, "}baz");
+}
+
+
 TEST(csp_parser, simple_placeholder)
 {
-    auto s = std::string{"$<${foo}"};
+    auto s = std::string{"{{${foo}"};
     auto tokens = hi::parse_csp(s.data(), s.data() + s.size(), "<none>");
 
     ASSERT_EQ(tokens.size(), 1);
@@ -52,7 +80,7 @@ TEST(csp_parser, simple_placeholder)
 
 TEST(csp_parser, format_placeholder)
 {
-    auto s = std::string{"$<${\"{}\", foo}"};
+    auto s = std::string{"{{${\"{}\", foo}"};
     auto tokens = hi::parse_csp(s.data(), s.data() + s.size(), "<none>");
 
     ASSERT_EQ(tokens.size(), 1);
@@ -65,7 +93,7 @@ TEST(csp_parser, format_placeholder)
 
 TEST(csp_parser, placeholder_lambda)
 {
-    auto s = std::string{"$<${\"{}\", [foo]{ return foo + 1}(), bar}"};
+    auto s = std::string{"{{${\"{}\", [foo]{ return foo + 1}(), bar}"};
     auto tokens = hi::parse_csp(s.data(), s.data() + s.size(), "<none>");
 
     ASSERT_EQ(tokens.size(), 1);
@@ -79,7 +107,7 @@ TEST(csp_parser, placeholder_lambda)
 
 TEST(csp_parser, placeholder_filter)
 {
-    auto s = std::string{"$<${\"{}\", foo + 1 `bar}"};
+    auto s = std::string{"{{${\"{}\", foo + 1 `bar}"};
     auto tokens = hi::parse_csp(s.data(), s.data() + s.size(), "<none>");
 
     ASSERT_EQ(tokens.size(), 1);
@@ -94,7 +122,7 @@ TEST(csp_parser, placeholder_filter)
 
 TEST(csp_parser, format_cppline)
 {
-    auto s = std::string{"$<$for (auto i: list){\nfoo $}\n"};
+    auto s = std::string{"{{$for (auto i: list){\nfoo $}\n"};
     auto tokens = hi::parse_csp(s.data(), s.data() + s.size(), "<none>");
 
     ASSERT_EQ(tokens.size(), 3);

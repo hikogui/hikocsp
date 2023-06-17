@@ -2,7 +2,7 @@
 /** @file csp_parser.hpp
  *
  *
- 
+
  */
 
 #pragma once
@@ -236,18 +236,9 @@ private:
             auto const c = *_it++;
             switch (c) {
             case '$':
-                if (found_special == '$') {
-                    // Add text including the first '$' as this was a dollar escape.
-                    emplace_token(csp_token::type::text, start, _it - 1);
-                    _state = state_type::text;
-                    return;
-
-                } else {
-                    found_special = c;
-                    // Prevent found_special to be reset.
-                    continue;
-                }
-                break;
+                found_special = c;
+                // Prevent found_special to be reset.
+                continue;
 
             case '{':
                 if (found_special == '$') {
@@ -257,16 +248,26 @@ private:
                 }
                 break;
 
-            case '>':
+            case '}':
                 if (found_special == '$') {
+                    // Fallthrough to default: to handle C++ line which
+                    // follows any character after a '$'.
+
+                } else if (found_special == '}') {
                     emplace_token(csp_token::type::text, start, _it - 2);
                     _state = state_type::verbatim;
                     return;
+
+                } else {
+                    found_special = c;
+                    // Prevent found_special to be reset.
+                    continue;
                 }
+                [[fallthrough]];
 
             default:
                 if (found_special == '$') {
-                    // Do not consume this character.
+                    // Do not consume this character (the first character after '$').
                     --_it;
 
                     // Strip of white-space preceding '$' when there is only
@@ -302,13 +303,14 @@ private:
         _state = state_type::end;
     }
 
-    /** Parse verbatim C++ code upto and including "$<".
+    /** Parse verbatim C++ code upto and including the last "{{" in a sequence.
      */
     void parse_verbatim() noexcept
     {
         auto start = _it;
         auto in_string = '\0';
         auto found_special = '\0';
+        auto open_braces = 0;
 
         while (_it != _end) {
             auto const c = *_it++;
@@ -321,6 +323,7 @@ private:
                     continue;
                 }
                 break;
+
             case '"':
             case '\'':
                 if (found_special == '\\') {
@@ -330,23 +333,25 @@ private:
                     in_string = '\0';
                 }
                 break;
-            case '$':
-                if (not in_string) {
-                    found_special = c;
-                    // Prevent found_special to be reset.
-                    continue;
-                }
-                break;
-            case '<':
-                if (found_special == '$') {
+
+            case '{':
+                ++open_braces;
+                // Prevent open_braces to be reset.
+                continue;
+
+            default:
+                if (open_braces >= 2) {
+                    // Do not consume the first character after '{{'.
+                    --_it;
+
                     emplace_token(csp_token::type::verbatim, start, _it - 2);
                     _state = state_type::text;
                     return;
                 }
-                break;
             }
 
             found_special = '\0';
+            open_braces = 0;
         }
 
         emplace_token(csp_token::type::verbatim, start, _it);

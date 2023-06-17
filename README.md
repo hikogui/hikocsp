@@ -107,7 +107,8 @@ Example
 #include "hikocsp/module.hpp"
 
 [[nodiscard]] std::generator<std::string> generate_page(std::vector<int> list, int b) noexcept
-{{{`hi::sgml_escape `hi::email_escape
+{{{
+${`hi::sgml_escape`hi::email_escape}
     <html>
         <head><title>Page</title></head>
         <body>
@@ -127,29 +128,61 @@ Example
 
 Syntax
 ------
-  
+
+We are using the following rules for the BNF below:
+ - `*`: zero or more.
+ - `+`: one or more.
+ - `?`: zero or one.
+ - `!`: one, but do not consume.
+ - `(` `)`: Group.
+ - `|`: Or
+ - `'` `'`: Literal.
+
 ```
-# cpp-char may include '{{' inside C++ string-literals.
-csp-file := ( cpp-char* | setting | text )*
+template := ( verbatim | text )*
 
-setting := output-setting | filter-setting
+#
+# Verbatim C++ code which is terminated when '{{' is found at the end of
+# a sequence of end-braces '{' outside of a string-literal.
+#
+verbatim := CHAR+
 
-output-setting := '$output ' ( 'co_yield' | cpp-char* ) ';'
+text :=  '{{' ( CHAR+ | placeholder | verbatim-line )* '}}'
 
-filter-setting := '$filter ' cpp-char* ( ',' cpp-char* )* ';'
+#
+# If there is a single expression, then it is converted to a two expression
+# placeholder with the first expression set to "{}".
+#
+# If there are multiple expressions than all the arguments are passed to
+# std::format(). Than the result is passed in left-to-right order through
+# each filter. If no filters are specified than the default filters are used.
+#
+# If there are only filters specified then those are the default filters used
+# from this point forward.
+#
+# An empty placeholder does nothing.
+#
+placeholder := '${' ( expression ( ',' expression )* )? ( '`' filter )* '}'
 
-text := [^{]* '{{' ( text-char* | escape | placeholder | cpp-line )* '}}'
+#
+# A C++ expression wich is terminated when an end-expression character is
+# found outside of a sub-expression or string-literal.
+#
+expression := CHAR* end-expression!
+end-expression := '$' | '`' | '@' | ',' | ']' | ')' | '}'
 
-text-char := [^$]
-escape := '$$'
+#
+# An empty filter expression will be replaced by the following lambda:
+#     [](auto const &x) { return x; }.
+#
+filter := expression
 
-# cpp-char may include commas ''' and close-braces '}' inside C++ string-literals and sub-expressions.
-placeholder := '${' cpp-char* ( ',' cpp-char* )* ( '`' cpp-char* )* '}'
+#
+# A line of verbatim C++ code. This can also be used to consume white-space
+# at the end of a line, to control when line-feeds appear in the output.
+#
+verbatim-line := '$' CHAR* '\n'
 
-cpp-line := '$' cpp-char* '\n'
-
-# Any character, however C++ string-literals and sub-expressions are being tracked.
-cpp-char := .
 ```
   
   
