@@ -37,39 +37,39 @@ co-routine.
   
 ### placeholder
 There are several versions of placeholders:
- - *Empty:* `${}`
- - *Escape:* `${` string-literal `}`
- - *Simple:* `${` expression ( `` ` `` filter )\* `}`
- - *Format:* `${` format-string ( `,` expression )+ ( `` ` `` filter )\* `}`
- - *Filter:* `${` `` ` `` filter ( `` ` `` filter )\* `}`
+ - **Empty:** `${}`
+ - **Escape:** `${` *string-literal* `}`
+ - **Simple:** `${` *expression* ( `` ` `` *filter* )\* `}`
+ - **Format:** `${` *format-string* ( `,` *expression* )+ ( `` ` `` *filter* )\* `}`
+ - **Filter:** `${` `` ` `` *filter* ( `` ` `` *filter* )\* `}`
 
-The *empty-placeholder* does nothing. It was added so that a placeholder can
+The **empty-placeholder** does nothing. It was added so that a placeholder can
 be placed during development of a template without having any side effects.
 
-The *escape-placeholder* allows the placement of special character sequences
-like `$`, `${` and `}}`. This is a special case of the *simple-placeholder*
+The **escape-placeholder** allows the placement of special character sequences
+like `$`, `${` and `}}`. This is a special case of the **simple-placeholder**
 where the text is not passed through any filters to allow the implementation
 to perform extra optimizations. The string-literal must start and end in
 a double quote `"` without any white-spaces.
 
-The *simple-placeholder* is syntactic sugar for the following
-*format-placeholder*:
+The **simple-placeholder** is syntactic sugar for the following
+**format-placeholder**:
  - `${"{}", ` expression ( `` ` `` filter )\* `}`
 
-The *format-placeholder* formats one or more expression using a format-string
+The **format-placeholder** formats one or more expression using a format-string
 for std::format(). Then the result is passed through each filter in
 left-to-right order. The result is then returned from the co-routine using
 `co_yield`. If no explicit filters are specified then the default filters
 are used.
 
-Filters are called with a single `std::string` argument and should return a
-`std::string` argument. The filter expression in a placeholder may be any
+Filters are called with a single std::string argument and should return a
+std::string argument. The filter expression in a placeholder may be any
 C++ expression which resolves into a callable object. An empty filter expression
 (which consists of just the leading back-tick `` ` ``) is replaced with the
 following lambda:
  - `[](auto const &x) { return x; }`.
 
-The *filter-placeholder* replaces the default filters to be used in subsequent
+The **filter-placeholder** replaces the default filters to be used in subsequent
 placeholders that do not have explicit filters specified.
 
 C++ expressions (including *expression*, *format-string* and *filter*) are
