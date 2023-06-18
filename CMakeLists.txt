@@ -34,13 +34,18 @@ endif()
 set(HIKOCSP_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/hikocsp")
 add_library(hikocsp INTERFACE)
 set_target_properties(hikocsp PROPERTIES DEBUG_POSTFIX "d")
-#set_target_properties(hikocsp PROPERTIES LINKER_LANGUAGE CXX)
 target_compile_features(hikocsp INTERFACE cxx_std_20)
+
+if (MSVC)
+    if (${CMAKE_BUILD_TYPE} MATCHES "Debug")
+        # Just my code enables the VS debugger to step over system, framework, library, and other non-user calls.
+        target_compile_options(hikocsp INTERFACE -JMC)
+    endif()
+endif()
 
 target_sources(hikocsp PUBLIC FILE_SET hikocsp_include_files TYPE HEADERS BASE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/src/" FILES
     ${HIKOCSP_SOURCE_DIR}/csp_parser.hpp
-    ${HIKOCSP_SOURCE_DIR}/csp_token.hpp
-    ${HIKOCSP_SOURCE_DIR}/line_count.hpp
+    ${HIKOCSP_SOURCE_DIR}/generator.hpp
 )
 
 target_include_directories(hikocsp INTERFACE
@@ -59,6 +64,7 @@ if(BUILD_TESTING)
 
     target_sources(hikocsp_tests PRIVATE
         ${HIKOCSP_SOURCE_DIR}/csp_parser_tests.cpp
+        ${HIKOCSP_SOURCE_DIR}/generator_tests.cpp
     )
     gtest_discover_tests(hikocsp_tests DISCOVERY_MODE PRE_TEST)
 endif()

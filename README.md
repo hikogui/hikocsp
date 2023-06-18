@@ -55,7 +55,7 @@ white-spaces.
 
 The **simple-placeholder** is syntactic sugar for the following
 **format-placeholder**:
- - `${"{}", ` expression ( `` ` `` filter )\* `}`
+ - `${"{}",` *expression* ( `` ` `` *filter* )\* `}`
 
 The **format-placeholder** formats one or more expression using a format-string
 for *std::format()*. Then the result is passed through each filter in
