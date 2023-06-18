@@ -87,9 +87,7 @@ TEST(csp_parser, empty_placeholder)
     auto it = tokens.begin();
 
     ASSERT_NE(it, tokens.end());
-    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder);
-    ASSERT_EQ(it->arguments.size(), 0);
-    ASSERT_EQ(it->filters.size(), 0);
+    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder_end);
     ASSERT_EQ(++it, tokens.end());
 }
 
@@ -100,10 +98,10 @@ TEST(csp_parser, empty_filter_placeholder)
     auto it = tokens.begin();
 
     ASSERT_NE(it, tokens.end());
-    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder);
-    ASSERT_EQ(it->arguments.size(), 0);
-    ASSERT_EQ(it->filters.size(), 1);
-    ASSERT_EQ(it->filters[0], "");
+    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder_filter);
+    ASSERT_EQ(it->text, "");
+    ASSERT_NE(++it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder_end);
     ASSERT_EQ(++it, tokens.end());
 }
 
@@ -114,10 +112,10 @@ TEST(csp_parser, filter_placeholder)
     auto it = tokens.begin();
 
     ASSERT_NE(it, tokens.end());
-    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder);
-    ASSERT_EQ(it->arguments.size(), 0);
-    ASSERT_EQ(it->filters.size(), 1);
-    ASSERT_EQ(it->filters[0], "foo");
+    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder_filter);
+    ASSERT_EQ(it->text, "foo");
+    ASSERT_NE(++it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder_end);
     ASSERT_EQ(++it, tokens.end());
 }
 
@@ -128,10 +126,10 @@ TEST(csp_parser, escape_placeholder)
     auto it = tokens.begin();
 
     ASSERT_NE(it, tokens.end());
-    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder);
-    ASSERT_EQ(it->arguments.size(), 1);
-    ASSERT_EQ(it->arguments[0], "\"$\"");
-    ASSERT_EQ(it->filters.size(), 0);
+    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder_argument);
+    ASSERT_EQ(it->text, "\"$\"");
+    ASSERT_NE(++it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder_end);
     ASSERT_EQ(++it, tokens.end());
 }
 
@@ -142,10 +140,10 @@ TEST(csp_parser, simple_placeholder)
     auto it = tokens.begin();
 
     ASSERT_NE(it, tokens.end());
-    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder);
-    ASSERT_EQ(it->arguments.size(), 1);
-    ASSERT_EQ(it->arguments[0], "foo");
-    ASSERT_EQ(it->filters.size(), 0);
+    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder_argument);
+    ASSERT_EQ(it->text, "foo");
+    ASSERT_NE(++it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder_end);
     ASSERT_EQ(++it, tokens.end());
 }
 
@@ -156,10 +154,13 @@ TEST(csp_parser, format_placeholder)
     auto it = tokens.begin();
 
     ASSERT_NE(it, tokens.end());
-    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder);
-    ASSERT_EQ(it->arguments.size(), 2);
-    ASSERT_EQ(it->arguments[0], "\"{}\"");
-    ASSERT_EQ(it->arguments[1], " foo");
+    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder_argument);
+    ASSERT_EQ(it->text, "\"{}\"");
+    ASSERT_NE(++it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder_argument);
+    ASSERT_EQ(it->text, " foo");
+    ASSERT_NE(++it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder_end);
     ASSERT_EQ(++it, tokens.end());
 }
 
@@ -170,11 +171,16 @@ TEST(csp_parser, placeholder_lambda)
     auto it = tokens.begin();
 
     ASSERT_NE(it, tokens.end());
-    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder);
-    ASSERT_EQ(it->arguments.size(), 3);
-    ASSERT_EQ(it->arguments[0], "\"{}\"");
-    ASSERT_EQ(it->arguments[1], " [foo]{ return foo + 1}()");
-    ASSERT_EQ(it->arguments[2], " bar");
+    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder_argument);
+    ASSERT_EQ(it->text, "\"{}\"");
+    ASSERT_NE(++it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder_argument);
+    ASSERT_EQ(it->text, " [foo]{ return foo + 1}()");
+    ASSERT_NE(++it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder_argument);
+    ASSERT_EQ(it->text, " bar");
+    ASSERT_NE(++it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder_end);
     ASSERT_EQ(++it, tokens.end());
 }
 
@@ -185,12 +191,16 @@ TEST(csp_parser, placeholder_filter)
     auto it = tokens.begin();
 
     ASSERT_NE(it, tokens.end());
-    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder);
-    ASSERT_EQ(it->arguments.size(), 2);
-    ASSERT_EQ(it->arguments[0], "\"{}\"");
-    ASSERT_EQ(it->arguments[1], " foo + 1 ");
-    ASSERT_EQ(it->filters.size(), 1);
-    ASSERT_EQ(it->filters[0], "bar");
+    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder_argument);
+    ASSERT_EQ(it->text, "\"{}\"");
+    ASSERT_NE(++it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder_argument);
+    ASSERT_EQ(it->text, " foo + 1 ");
+    ASSERT_NE(++it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder_filter);
+    ASSERT_EQ(it->text, "bar");
+    ASSERT_NE(++it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token::type::placeholder_end);
     ASSERT_EQ(++it, tokens.end());
 }
 

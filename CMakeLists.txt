@@ -1,6 +1,8 @@
 
 cmake_minimum_required(VERSION 3.25)
 
+set(CMAKE_USER_MAKE_RULES_OVERRIDE "CMakeOverride.txt")
+
 file(READ ${CMAKE_SOURCE_DIR}/vcpkg.json VCPKG_JSON_STRING)
 string(JSON HIKOCSP_LIB_NAME     GET ${VCPKG_JSON_STRING} "name")
 string(JSON HIKOCSP_LIB_VERSION  GET ${VCPKG_JSON_STRING} "version")
@@ -35,6 +37,7 @@ set(HIKOCSP_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/hikocsp")
 add_library(hikocsp INTERFACE)
 set_target_properties(hikocsp PROPERTIES DEBUG_POSTFIX "d")
 target_compile_features(hikocsp INTERFACE cxx_std_20)
+target_compile_options(hikocsp INTERFACE -arch:AVX2)
 
 if (MSVC)
     if (${CMAKE_BUILD_TYPE} MATCHES "Debug")

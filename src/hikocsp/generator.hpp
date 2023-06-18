@@ -33,6 +33,17 @@ public:
 
     class promise_type {
     public:
+        ~promise_type()
+        {
+            if constexpr (not std::is_trivially_destructible_v<value_type>) {
+                if (_has_value) {
+                    std::destroy_at(std::addressof(_value));
+                }
+            }
+        }
+
+        promise_type() noexcept : _exception(nullptr), _empty(), _has_value(false) {}
+
         generator get_return_object()
         {
             return generator{handle_type::from_promise(*this)};
@@ -40,7 +51,7 @@ public:
 
         value_type const& value() const noexcept
         {
-            return *_value;
+            return _value;
         }
 
         static std::suspend_never initial_suspend() noexcept
@@ -53,15 +64,18 @@ public:
             return {};
         }
 
-        std::suspend_always yield_value(value_type const& value) noexcept
+        template<typename Arg>
+        std::suspend_always yield_value(Arg&& arg) noexcept
+            requires(std::is_same_v<std::remove_cvref_t<Arg>, value_type>)
         {
-            _value = value;
-            return {};
-        }
+            if constexpr (not std::is_trivially_destructible_v<value_type>) {
+                if (_has_value) {
+                    std::destroy_at(std::addressof(_value));
+                }
+                _has_value = true;
+            }
 
-        std::suspend_always yield_value(value_type&& value) noexcept
-        {
-            _value = std::move(value);
+            std::construct_at(std::addressof(_value), std::forward<Arg>(arg));
             return {};
         }
 
@@ -72,19 +86,30 @@ public:
 
         void unhandled_exception() noexcept
         {
+            if constexpr (not std::is_trivially_destructible_v<value_type>) {
+                if (_has_value) {
+                    std::destroy_at(std::addressof(_value));
+                }
+                _has_value = false;
+            }
             _exception = std::current_exception();
         }
 
         void rethrow()
         {
-            if (auto ptr = std::exchange(_exception, nullptr)) {
+            if (auto ptr = _exception) {
+                _exception = nullptr;
                 std::rethrow_exception(ptr);
             }
         }
 
     private:
-        std::optional<value_type> _value = {};
         std::exception_ptr _exception = nullptr;
+        union {
+            char _empty;
+            value_type _value;
+        };
+        bool _has_value = false;
     };
 
     using handle_type = std::coroutine_handle<promise_type>;
