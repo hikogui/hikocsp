@@ -53,6 +53,14 @@ constexpr auto to_underlying(T x) noexcept
     return static_cast<std::underlying_type_t<T>>(x);
 }
 
+/** Parse a CSP template.
+ *
+ * @param first A pointer to the first character of a CSP template.
+ * @param last A pointer beyond the last character of a CSP template.
+ * @param path The path to the file being parsed, used for error messages.
+ * @return A generator of tokens.
+ * @throws csp_error On parse error, which may also be thrown during generation.
+ */
 generator<csp_token> parse_csp(char const *first, char const *last, std::filesystem::path const& path)
 {
     // 16 states.
@@ -132,10 +140,15 @@ generator<csp_token> parse_csp(char const *first, char const *last, std::filesys
         return (static_cast<size_t>(s) << 8) | static_cast<uint8_t>(c);
     };
 
-    // One entry for each state (16) and character (256).
+    // This is an intermediate jump table which case-labels which do not
+    // have gaps. This allows the code-generator make an efficient table-based
+    // switch statement instead of a binary-search CMP JA JE sequence.
+    //
+    // This is the first part of a state trasition table, with the switch
+    // statement being the second part.
     constexpr auto jump_table = [] {
-        constexpr auto jump_table_size = state_type_size * 0x100;
-        auto r = std::array<jump_type, jump_table_size>{};
+        // One entry for each state (16) and character (256).
+        auto r = std::array<jump_type, state_type_size * 0x100>{};
 
         for (auto state = 0; state != state_type_size; ++state) {
             r[jump_index(static_cast<state_type>(state), '\n')] = default_j_linefeed;
@@ -211,10 +224,10 @@ generator<csp_token> parse_csp(char const *first, char const *last, std::filesys
     auto has_arguments = false;
 
     while (true) {
-        // Because we are parsing character-per-character this needs to be
-        // very fast. We create local (CPU registers) variables before we
-        // enter the inner-loop. The inner loop uses goto-to-outer-loop
-        // to yield a value so that it can restore the co_* variables.
+        // Initialize local variable before entering the inner loop.
+        // These variables are saved to the coroutine frame before yielding.
+        // Yielding is done outside of the inner-loop to let the optimizer know
+        // it can use CPU registers for these local variables. 
         auto it = co_it;
         auto last = co_last;
         auto line_nr = co_line_nr;
@@ -223,8 +236,9 @@ generator<csp_token> parse_csp(char const *first, char const *last, std::filesys
         csp_token token;
 
         while (it != last) {
-            switch (jump(state, *it)) {
-            // Handle switch to text-mode '{{'.
+            // This switch statement forms the second part of the state
+            // transition table.
+            switch (jump(state, *it++)) {
             case verbatim_j_obrace:
                 state = verbatim_brace;
                 break;
@@ -236,7 +250,6 @@ generator<csp_token> parse_csp(char const *first, char const *last, std::filesys
             case verbatim_dbrace_j_obrace:
                 break;
 
-            // Handle char-literal
             case verbatim_j_squote:
                 state = verbatim_squote;
                 break;
@@ -249,7 +262,6 @@ generator<csp_token> parse_csp(char const *first, char const *last, std::filesys
                 state = verbatim_squote_escape;
                 break;
 
-            // Handle string-literal
             case verbatim_j_dquote:
                 state = verbatim_dquote;
                 break;
@@ -262,15 +274,14 @@ generator<csp_token> parse_csp(char const *first, char const *last, std::filesys
                 state = verbatim_dquote_escape;
                 break;
 
-            // Handle switch to verbatim-mode
             case text_j_cbrace:
                 state = text_brace;
                 break;
 
             case text_brace_j_cbrace:
                 {
-                    auto const text = std::string_view{token_start, it - 1};
-                    token_start = ++it;
+                    auto const text = std::string_view{token_start, it - 2};
+                    token_start = it;
                     state = verbatim;
 
                     if (not text.empty()) {
@@ -278,7 +289,7 @@ generator<csp_token> parse_csp(char const *first, char const *last, std::filesys
                         goto do_yield;
                     }
                 }
-                continue;
+                break;
 
             case text_j_dollar:
                 state = text_dollar;
@@ -286,87 +297,81 @@ generator<csp_token> parse_csp(char const *first, char const *last, std::filesys
 
             case text_dollar_j_obrace:
                 {
-                    auto const text = std::string_view{token_start, it - 1};
-                    token_start = ++it;
+                    auto const text = std::string_view{token_start, it - 2};
+                    token_start = it;
                     state = placeholder;
                     if (not text.empty()) {
                         token = csp_token(csp_token::type::text, line_nr, text);
                         goto do_yield;
                     }
                 }
-                continue;
+                break;
 
             case placeholder_j_comma:
                 {
                     if (stack_size == 0) {
-                        auto const text = std::string_view{token_start, it};
-                        token_start = ++it;
+                        auto const text = std::string_view{token_start, it - 1};
+                        token_start = it;
                         has_arguments |= not is_filter;
 
                         auto const t = is_filter ? csp_token::type::placeholder_filter : csp_token::type::placeholder_argument;
                         token = csp_token(t, line_nr, text);
                         goto do_yield;
-
-                    } else {
-                        ++it;
                     }
                 }
-                continue;
+                break;
 
             case placeholder_j_bquote:
                 {
                     if (stack_size == 0) {
-                        auto const text = std::string_view{token_start, it};
+                        auto const text = std::string_view{token_start, it - 1};
                         auto const t = is_filter ? csp_token::type::placeholder_filter : csp_token::type::placeholder_argument;
 
                         is_filter = true;
-                        token_start = ++it;
+                        token_start = it;
 
                         if (t == csp_token::type::placeholder_filter or not text.empty() or has_arguments) {
                             has_arguments |= t == csp_token::type::placeholder_argument;
                             token = csp_token(t, line_nr, text);
                             goto do_yield;
                         }
-
-                    } else {
-                        ++it;
                     }
                 }
-                continue;
+                break;
 
             case placeholder_j_obrace:
                 if (stack_size == stack.size()) {
-                    throw csp_error(
-                        std::format("{}:{}: Subexpression stack is too deep, while processing {}.", path.string(), line_nr, *it));
+                    throw csp_error(std::format(
+                        "{}:{}: Subexpression stack is too deep, while processing {}.", path.string(), line_nr, *(it - 1)));
                 }
                 stack[stack_size++] = '}';
                 break;
 
             case placeholder_j_oparen:
                 if (stack_size == stack.size()) {
-                    throw csp_error(
-                        std::format("{}:{}: Subexpression stack is too deep, while processing {}.", path.string(), line_nr, *it));
+                    throw csp_error(std::format(
+                        "{}:{}: Subexpression stack is too deep, while processing {}.", path.string(), line_nr, *(it - 1)));
                 }
                 stack[stack_size++] = ')';
                 break;
 
             case placeholder_j_obracket:
                 if (stack_size == stack.size()) {
-                    throw csp_error(
-                        std::format("{}:{}: Subexpression stack is too deep, while processing {}.", path.string(), line_nr, *it));
+                    throw csp_error(std::format(
+                        "{}:{}: Subexpression stack is too deep, while processing {}.", path.string(), line_nr, *(it - 1)));
                 }
                 stack[stack_size++] = ']';
                 break;
 
             case placeholder_j_cbrace:
                 if (stack_size == 0) {
-                    if (is_filter or token_start != it or has_arguments) {
-                        auto const text = std::string_view{token_start, it};
+                    auto const text = std::string_view{token_start, it - 1};
+                    if (is_filter or not text.empty() or has_arguments) {
                         auto const t = is_filter ? csp_token::type::placeholder_filter : csp_token::type::placeholder_argument;
 
                         // return to back to this (placeholder_j_cbrace) state for further processing.
                         // clearing the following variables will skip this if-statement.
-                        token_start = it;
+                        token_start = --it;
                         is_filter = false;
                         has_arguments = false;
 
@@ -374,8 +379,8 @@ generator<csp_token> parse_csp(char const *first, char const *last, std::filesys
                         goto do_yield;
                     }
 
-                    token_start = ++it;
-                    state = text;
+                    token_start = it;
+                    state = state_type::text;
                     token = csp_token(csp_token::type::placeholder_end, line_nr);
                     goto do_yield;
                 }
@@ -383,16 +388,19 @@ generator<csp_token> parse_csp(char const *first, char const *last, std::filesys
             case placeholder_j_cparen:
             case placeholder_j_cbracket:
                 if (stack_size == 0) {
-                    throw csp_error(std::format("{}:{}: Unexpected '{}' in placeholder expression", path.string(), line_nr, *it));
+                    throw csp_error(
+                        std::format("{}:{}: Unexpected '{}' in placeholder expression", path.string(), line_nr, *(it - 1)));
 
-                } else if (stack[--stack_size] != *it) {
+                } else if (stack[--stack_size] != *(it - 1)) {
                     throw csp_error(std::format(
-                        "{}:{}: Expecting '{}' got '{}' in placeholder expression", path.string(), line_nr, stack.back(), *it));
+                        "{}:{}: Expecting '{}' got '{}' in placeholder expression",
+                        path.string(),
+                        line_nr,
+                        stack.back(),
+                        *(it - 1)));
                 }
-                ++it;
-                continue;
+                break;
 
-            // Handle char-literal
             case placeholder_j_squote:
                 state = placeholder_squote;
                 break;
@@ -405,7 +413,6 @@ generator<csp_token> parse_csp(char const *first, char const *last, std::filesys
                 state = placeholder_squote_escape;
                 break;
 
-            // Handle string-literal
             case placeholder_j_dquote:
                 state = placeholder_dquote;
                 break;
@@ -420,10 +427,9 @@ generator<csp_token> parse_csp(char const *first, char const *last, std::filesys
 
             case line_verbatim_j_linefeed:
                 {
-                    ++line_nr;
-                    auto const text = std::string_view{token_start, it + 1};
+                    auto const text = std::string_view{token_start, it};
 
-                    token_start = it + 1;
+                    token_start = it;
                     state = state_type::text;
 
                     if (not text.empty()) {
@@ -431,11 +437,9 @@ generator<csp_token> parse_csp(char const *first, char const *last, std::filesys
                         goto do_yield;
                     }
                 }
-                continue;
-
+                [[fallthrough]];
             case default_j_linefeed:
                 ++line_nr;
-                [[fallthrough]];
             case default_j:
                 break;
 
@@ -458,16 +462,19 @@ generator<csp_token> parse_csp(char const *first, char const *last, std::filesys
                 [[fallthrough]];
             case verbatim_brace_j:
                 state = verbatim;
-                continue;
+                // Don't consume this character.
+                --it;
+                break;
 
             case verbatim_dbrace_j_linefeed:
                 ++line_nr;
                 [[fallthrough]];
             case verbatim_dbrace_j:
                 {
-                    auto const text = std::string_view{token_start, it - 2};
+                    auto const text = std::string_view{token_start, it - 3};
 
-                    token_start = it;
+                    // Don't consume this character.
+                    token_start = --it;
                     state = state_type::text;
 
                     if (not text.empty()) {
@@ -475,22 +482,24 @@ generator<csp_token> parse_csp(char const *first, char const *last, std::filesys
                         goto do_yield;
                     }
                 }
-                continue;
+                break;
 
             case text_brace_j_linefeed:
                 ++line_nr;
                 [[fallthrough]];
             case text_brace_j:
                 state = text;
-                continue;
+                // Don't consume this character.
+                break;
 
             case text_dollar_j_linefeed:
                 ++line_nr;
                 [[fallthrough]];
             case text_dollar_j:
                 {
-                    auto const text = std::string_view{token_start, it - 1};
-                    token_start = it;
+                    auto const text = std::string_view{token_start, it - 2};
+                    // Don't consume this character.
+                    token_start = --it;
                     state = line_verbatim;
 
                     if (not text.empty()) {
@@ -523,7 +532,7 @@ generator<csp_token> parse_csp(char const *first, char const *last, std::filesys
                         }
                     }
                 }
-                continue;
+                break;
 
             case placeholder_squote_escape_j_linefeed:
                 ++line_nr;
@@ -543,47 +552,41 @@ generator<csp_token> parse_csp(char const *first, char const *last, std::filesys
                 // Remove bound check on switch statement.
                 __assume(false);
             }
-
-            ++it;
         }
 
-        co_it = it;
-        co_last = last;
-        co_line_nr = line_nr;
-        co_state = state;
-        co_stack_size = stack_size;
-        break;
+        // Handle the text that is left over when end-of-file was found.
+        if (token_start != it) {
+            switch (co_state) {
+            case verbatim:
+                co_yield csp_token(csp_token::type::verbatim, line_nr, token_start, it);
+                break;
+
+            case text:
+                co_yield csp_token(csp_token::type::text, line_nr, token_start, it);
+                break;
+
+            case line_verbatim:
+                co_yield csp_token(csp_token::type::verbatim, line_nr, token_start, it);
+                break;
+
+            default:
+                throw csp_error{std::format(
+                    "{}:{}: Unexpected characters at end of template \"{}\"",
+                    path.string(),
+                    line_nr,
+                    std::string_view{token_start, it})};
+            }
+        }
+        co_return;
 
 do_yield:
+        // Save the CPU registers in the coroutine-frame before yielding.
         co_it = it;
         co_last = last;
         co_line_nr = line_nr;
         co_state = state;
         co_stack_size = stack_size;
         co_yield token;
-    }
-
-    if (token_start != co_it) {
-        switch (co_state) {
-        case verbatim:
-            co_yield csp_token(csp_token::type::verbatim, co_line_nr, token_start, co_it);
-            break;
-
-        case text:
-            co_yield csp_token(csp_token::type::text, co_line_nr, token_start, co_it);
-            break;
-
-        case line_verbatim:
-            co_yield csp_token(csp_token::type::verbatim, co_line_nr, token_start, co_it);
-            break;
-
-        default:
-            throw csp_error{std::format(
-                "{}:{}: Unexpected characters at end of template \"{}\"",
-                path.string(),
-                co_line_nr,
-                std::string_view{token_start, co_it})};
-        }
     }
 }
 
