@@ -43,7 +43,12 @@ if (MSVC)
     if (${CMAKE_BUILD_TYPE} MATCHES "Debug")
         # Just my code enables the VS debugger to step over system, framework, library, and other non-user calls.
         target_compile_options(hikocsp INTERFACE -JMC)
-    endif()
+
+        # Turn on the address sanitizer for all libraries and executables.
+target_compile_options(hikocsp INTERFACE -fsanitize=address)
+target_compile_options(gtest PUBLIC -fsanitize=address)
+target_compile_options(gtest_main PUBLIC -fsanitize=address)
+endif()
 endif()
 
 target_sources(hikocsp PUBLIC FILE_SET hikocsp_include_files TYPE HEADERS BASE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/src/" FILES

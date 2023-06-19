@@ -10,6 +10,7 @@
 #include <memory>
 #include <memory_resource>
 #include <type_traits>
+#include <cassert>
 
 namespace csp { inline namespace v1 {
 
@@ -20,7 +21,7 @@ namespace csp { inline namespace v1 {
  * the yielded values through an forward-iterator returned by the
  * `begin()` and `end()` member functions.
  *
- * The incrementing the iterator will resume the generator-function until
+ * Incrementing the iterator will resume the generator-function until
  * the generator-function co_yields another value.
  */
 template<typename T>
@@ -33,17 +34,6 @@ public:
 
     class promise_type {
     public:
-        ~promise_type()
-        {
-            if constexpr (not std::is_trivially_destructible_v<value_type>) {
-                if (_has_value) {
-                    std::destroy_at(std::addressof(_value));
-                }
-            }
-        }
-
-        promise_type() noexcept : _exception(nullptr), _empty(), _has_value(false) {}
-
         generator get_return_object()
         {
             return generator{handle_type::from_promise(*this)};
@@ -51,7 +41,8 @@ public:
 
         value_type const& value() const noexcept
         {
-            return _value;
+            assert(_value_ptr != nullptr);
+            return *_value_ptr;
         }
 
         static std::suspend_never initial_suspend() noexcept
@@ -64,18 +55,9 @@ public:
             return {};
         }
 
-        template<typename Arg>
-        std::suspend_always yield_value(Arg&& arg) noexcept
-            requires(std::is_same_v<std::remove_cvref_t<Arg>, value_type>)
+        std::suspend_always yield_value(value_type const &arg) noexcept
         {
-            if constexpr (not std::is_trivially_destructible_v<value_type>) {
-                if (_has_value) {
-                    std::destroy_at(std::addressof(_value));
-                }
-                _has_value = true;
-            }
-
-            std::construct_at(std::addressof(_value), std::forward<Arg>(arg));
+            _value_ptr = std::addressof(arg);
             return {};
         }
 
@@ -86,12 +68,7 @@ public:
 
         void unhandled_exception() noexcept
         {
-            if constexpr (not std::is_trivially_destructible_v<value_type>) {
-                if (_has_value) {
-                    std::destroy_at(std::addressof(_value));
-                }
-                _has_value = false;
-            }
+            _value_ptr = nullptr;
             _exception = std::current_exception();
         }
 
@@ -105,11 +82,7 @@ public:
 
     private:
         std::exception_ptr _exception = nullptr;
-        union {
-            char _empty;
-            value_type _value;
-        };
-        bool _has_value = false;
+        value_type const *_value_ptr = nullptr;
     };
 
     using handle_type = std::coroutine_handle<promise_type>;
