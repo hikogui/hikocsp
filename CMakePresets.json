@@ -14,10 +14,6 @@
                 "value": "x64",
                 "strategy": "external"
             },
-            "toolset": {
-                "value": "v143,host=x64",
-                "strategy": "external"
-            },
             "vendor": {
                 "microsoft.com/VisualStudioSettings/CMake/1.0": {
                     "hostOS": [ "Windows" ]
@@ -30,11 +26,6 @@
             "inherits": "x64-windows",
             "cacheVariables": {
                 "CMAKE_CXX_COMPILER": "cl"
-            },
-            "vendor": {
-                "microsoft.com/VisualStudioSettings/CMake/1.0": {
-                    "intelliSenseMode": "windows-msvc-x64"
-                }
             }
         },
         {
@@ -99,6 +90,22 @@
             "inherits": "clang-x64-windows-static",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "clang-x64-windows-static-rel",
+            "displayName": "clang-x64-Release",
+            "inherits": "clang-x64-windows-static",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "clang-x64-windows-static-rdi",
+            "displayName": "clang-x64-RelWithDebInfo",
+            "inherits": "clang-x64-windows-static",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
             }
         }
     ]

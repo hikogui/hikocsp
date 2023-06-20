@@ -62,7 +62,9 @@ struct csp_token {
     }
 };
 
-enum class csp_parse_state : uint8_t { placeholder, line_verbatim, verbatim };
+namespace detail {
+
+enum class parse_csp_after_text : uint8_t { placeholder, line_verbatim, verbatim };
 
 /** Find the next token
  *
@@ -77,7 +79,7 @@ enum class csp_parse_state : uint8_t { placeholder, line_verbatim, verbatim };
  * @return iterator or last, num_lines, identifier for what follows.
  */
 template<std::random_access_iterator It>
-[[nodiscard]] constexpr csp_token<It> csp_find_end_text(It& first, It last, int& line_nr, csp_parse_state& out) noexcept
+[[nodiscard]] constexpr csp_token<It> parse_csp_text(It& first, It last, int& line_nr, parse_csp_after_text& after) noexcept
 {
     enum class state_type : uint8_t { idle, found_dollar, found_cbrace };
 
@@ -98,7 +100,7 @@ template<std::random_access_iterator It>
                 r.last = it - 1;
                 first = it;
                 line_nr += num_lines;
-                out = csp_parse_state::line_verbatim;
+                after = parse_csp_after_text::line_verbatim;
                 return r;
 
             } else if (state == state_type::found_cbrace) {
@@ -106,7 +108,7 @@ template<std::random_access_iterator It>
                 r.last = it - 1;
                 first = it + 1;
                 line_nr += num_lines;
-                out = csp_parse_state::verbatim;
+                after = parse_csp_after_text::verbatim;
                 return r;
 
             } else {
@@ -121,7 +123,7 @@ template<std::random_access_iterator It>
                 r.last = it - 1;
                 first = it + 1;
                 line_nr += num_lines;
-                out = csp_parse_state::placeholder;
+                after = parse_csp_after_text::placeholder;
                 return r;
             }
             break;
@@ -136,7 +138,7 @@ template<std::random_access_iterator It>
                 r.last = it - 1;
                 first = it;
                 line_nr += num_lines;
-                out = csp_parse_state::line_verbatim;
+                after = parse_csp_after_text::line_verbatim;
                 return r;
             }
         }
@@ -148,7 +150,7 @@ template<std::random_access_iterator It>
     r.last = last;
     first = last;
     line_nr += num_lines;
-    out = csp_parse_state::verbatim;
+    after = parse_csp_after_text::verbatim;
     return r;
 }
 
@@ -163,7 +165,8 @@ template<std::random_access_iterator It>
  * @return iterator or last on error, number of lines in the expression.
  */
 template<std::random_access_iterator It>
-[[nodiscard]] inline csp_token<It> csp_find_end_expression(It& first, It last, int& line_nr, bool is_filter)
+[[nodiscard]] inline csp_token<It>
+parse_csp_expression(It& first, It last, std::filesystem::path const& path, int& line_nr, bool is_filter)
 {
     auto quote = '\0';
     bool escape = false;
@@ -198,7 +201,7 @@ template<std::random_access_iterator It>
         case '[':
             if (not quote) {
                 if (stack_size == stack.size()) {
-                    throw csp_error(std::format("{}: Subexpression nesting is too deep.", line_nr));
+                    throw csp_error(std::format("{}:{}: Subexpression nesting is too deep.", path.string(), line_nr));
                 }
                 stack[stack_size++] = *it == '{' ? '}' : *it == '(' ? ')' : ']';
             }
@@ -217,7 +220,11 @@ template<std::random_access_iterator It>
 
                 } else if (stack[--stack_size] != *it) {
                     throw csp_error(std::format(
-                        "{}: Unexpected {} when terminating subexpression, expecting {}", line_nr, *it, stack[stack_size]));
+                        "{}:{}: Unexpected {} when terminating subexpression, expecting {}",
+                        path.string(),
+                        line_nr,
+                        *it,
+                        stack[stack_size]));
                 }
             }
             break;
@@ -245,11 +252,11 @@ template<std::random_access_iterator It>
         escape = false;
     }
 
-    throw csp_error(std::format("{}: Unexpected EOF parsing C++ expression", line_nr));
+    throw csp_error(std::format("{}:{}: Unexpected EOF parsing C++ expression", path.string(), line_nr));
 }
 
 template<std::random_access_iterator It>
-[[nodiscard]] constexpr csp_token<It> csp_find_end_line_verbatim(It& first, It last, int& line_nr) noexcept
+[[nodiscard]] constexpr csp_token<It> parse_csp_line_verbatim(It& first, It last, int& line_nr) noexcept
 {
     auto r = csp_token<It>{csp_token_type::verbatim, line_nr};
 
@@ -269,7 +276,7 @@ template<std::random_access_iterator It>
     return r;
 }
 
-    /** Find the end of a C++ verbatim.
+/** Find the end of a C++ verbatim.
  *
  * This finds the position at the last two braces '{{' in a sequence of
  * braces outside of C++ string-literals.
@@ -280,7 +287,7 @@ template<std::random_access_iterator It>
  * @return iterator at '{{' or last, number of lines.
  */
 template<std::random_access_iterator It>
-[[nodiscard]] constexpr csp_token<It> csp_find_end_verbatim(It& first, It last, int& line_nr) noexcept
+[[nodiscard]] constexpr csp_token<It> parse_csp_verbatim(It& first, It last, int& line_nr) noexcept
 {
     auto quote = '\0';
     bool escape = false;
@@ -342,29 +349,31 @@ template<std::random_access_iterator It>
     return r;
 }
 
+} // namespace detail
+
 template<std::random_access_iterator It>
-generator<csp_token<It>> parse_csp(It first, It last)
+generator<csp_token<It>> parse_csp(It first, It last, std::filesystem::path const& path)
 {
     int line_nr = 0;
 
     while (first != last) {
-        if (auto const token = csp_find_end_verbatim(first, last, line_nr)) {
+        if (auto const token = detail::parse_csp_verbatim(first, last, line_nr)) {
             co_yield token;
         }
 
         while (first != last) {
-            auto next_token = csp_parse_state{};
-            if (auto const token = csp_find_end_text(first, last, line_nr, next_token)) {
+            auto after = detail::parse_csp_after_text{};
+            if (auto const token = detail::parse_csp_text(first, last, line_nr, after)) {
                 co_yield token;
             }
 
-            if (next_token == csp_parse_state::verbatim) {
+            if (after == detail::parse_csp_after_text::verbatim) {
                 // This is either verbatim C++ or EOF.
                 // Break from the text-loop; loop back to C++ verbatim.
                 break;
 
-            } else if (next_token == csp_parse_state::line_verbatim) {
-                if (auto const token = csp_find_end_line_verbatim(first, last, line_nr)) {
+            } else if (after == detail::parse_csp_after_text::line_verbatim) {
+                if (auto const token = detail::parse_csp_line_verbatim(first, last, line_nr)) {
                     co_yield token;
                 }
 
@@ -374,7 +383,7 @@ generator<csp_token<It>> parse_csp(It first, It last)
                 auto is_filter = false;
                 while (true) {
                     if (first == last) {
-                        throw csp_error(std::format("{}: Incomplete placeholder found.", line_nr));
+                        throw csp_error(std::format("{}:{}: Incomplete placeholder found.", path.string(), line_nr));
 
                     } else if (*first == '}') {
                         if (is_filter) {
@@ -394,7 +403,7 @@ generator<csp_token<It>> parse_csp(It first, It last)
                         ++first;
 
                     } else {
-                        if (auto const token = csp_find_end_expression(first, last, line_nr, is_filter)) {
+                        if (auto const token = detail::parse_csp_expression(first, last, path, line_nr, is_filter)) {
                             co_yield token;
                         }
                         is_filter = false;
@@ -405,14 +414,9 @@ generator<csp_token<It>> parse_csp(It first, It last)
     }
 }
 
-generator<csp_token<std::string_view::const_iterator>> parse_csp(std::string_view str, std::filesystem::path const& path)
+auto parse_csp(std::string_view str, std::filesystem::path const& path)
 {
-    try {
-        for (auto& x : parse_csp(str.begin(), str.end())) {
-            co_yield x;
-        }
-    } catch (csp_error const& e) {
-        throw csp_error(std::format("{}:{}", path.string(), e.what()));
-    }
+    return parse_csp(str.begin(), str.end(), path);
 }
+
 }} // namespace csp::v1
