@@ -8,60 +8,18 @@
 #pragma once
 
 #include "generator.hpp"
+#include "csp_error.hpp"
+#include "csp_token.hpp"
 #include <string_view>
 #include <format>
 #include <filesystem>
+#include <cstddef>
 #include <cstdint>
 #include <array>
 #include <iterator>
 #include <concepts>
 
 namespace csp { inline namespace v1 {
-
-class csp_error : public std::runtime_error {
-    using std::runtime_error::runtime_error;
-};
-
-enum class csp_token_type { verbatim, placeholder_argument, placeholder_filter, placeholder_end, text };
-
-template<std::random_access_iterator It>
-struct csp_token {
-    It first;
-    It last;
-    int line_nr;
-    csp_token_type kind;
-
-    ~csp_token() = default;
-    constexpr csp_token(csp_token const&) noexcept = default;
-    constexpr csp_token(csp_token&&) noexcept = default;
-    constexpr csp_token& operator=(csp_token const&) noexcept = default;
-    constexpr csp_token& operator=(csp_token&&) noexcept = default;
-
-    constexpr csp_token() noexcept : first(), last(), line_nr(), kind() {}
-
-    constexpr csp_token(csp_token_type kind, int line_nr, It first, It last) noexcept :
-        first(first), last(last), line_nr(line_nr), kind(kind)
-    {
-    }
-
-    constexpr csp_token(csp_token_type kind, int line_nr) noexcept : csp_token(kind, line_nr, {}, {}) {}
-
-    [[nodiscard]] constexpr std::string_view text() const noexcept
-    {
-        return std::string_view{first, last};
-    }
-
-    [[nodiscard]] constexpr bool empty() const noexcept
-    {
-        return first == last;
-    }
-
-    explicit operator bool() const noexcept
-    {
-        return not empty();
-    }
-};
-
 namespace detail {
 
 enum class parse_csp_after_text : uint8_t { placeholder, line_verbatim, verbatim };
@@ -163,9 +121,12 @@ template<std::random_access_iterator It>
  *
  * @param str The string to parse.
  * @return iterator or last on error, number of lines in the expression.
+ *
+ * Due to bug in MSVC: https://developercommunity.visualstudio.com/t/C3615-false-positive-when-early-return-f/10395567
+ * this function can not be made constexpr.
  */
 template<std::random_access_iterator It>
-[[nodiscard]] inline csp_token<It>
+[[nodiscard]] csp_token<It>
 parse_csp_expression(It& first, It last, std::filesystem::path const& path, int& line_nr, bool is_filter)
 {
     auto quote = '\0';

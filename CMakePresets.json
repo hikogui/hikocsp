@@ -86,6 +86,7 @@
         },
         {
             "name": "clang-x64-windows-static-dbg",
+            "hidden": true,
             "displayName": "clang-x64-Debug",
             "inherits": "clang-x64-windows-static",
             "cacheVariables": {
@@ -94,6 +95,7 @@
         },
         {
             "name": "clang-x64-windows-static-rel",
+            "hidden": true,
             "displayName": "clang-x64-Release",
             "inherits": "clang-x64-windows-static",
             "cacheVariables": {
@@ -102,6 +104,7 @@
         },
         {
             "name": "clang-x64-windows-static-rdi",
+            "hidden": true,
             "displayName": "clang-x64-RelWithDebInfo",
             "inherits": "clang-x64-windows-static",
             "cacheVariables": {

@@ -6,11 +6,10 @@
 
 #include <concepts>
 #include <coroutine>
-#include <optional>
-#include <memory>
-#include <memory_resource>
 #include <type_traits>
 #include <cassert>
+#include <exception>
+#include <iterator>
 
 namespace csp { inline namespace v1 {
 
