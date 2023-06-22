@@ -29,7 +29,12 @@ struct csp_token {
 
     constexpr csp_token(csp_token_type kind, int line_nr) noexcept : csp_token(kind, line_nr, {}, {}) {}
 
-    [[nodiscard]] constexpr std::string_view text() const noexcept
+    [[nodiscard]] constexpr std::string text() const noexcept
+    {
+        return std::string{first, last};
+    }
+
+    [[nodiscard]] constexpr std::string_view text_view() const noexcept
     {
         return std::string_view{first, last};
     }
