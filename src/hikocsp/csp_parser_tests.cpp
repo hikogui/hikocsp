@@ -1,3 +1,6 @@
+// Copyright Take Vos 2023.
+// Distributed under the Boost Software License, Version 1.0.
+// (See accompanying file LICENSE_1_0.txt or copy at https://www.boost.org/LICENSE_1_0.txt)
 
 #include "csp_parser.hpp"
 #include <gtest/gtest.h>
@@ -10,7 +13,7 @@ TEST(csp_parser, verbatim)
 
     ASSERT_NE(it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::verbatim);
-    ASSERT_EQ(it->text(), "foo");
+    ASSERT_EQ(it->text, "foo");
     ASSERT_EQ(++it, tokens.end());
 }
 
@@ -22,10 +25,10 @@ TEST(csp_parser, verbatim_text)
 
     ASSERT_NE(it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::verbatim);
-    ASSERT_EQ(it->text(), "foo");
+    ASSERT_EQ(it->text, "foo");
     ASSERT_NE(++it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::text);
-    ASSERT_EQ(it->text(), "bar");
+    ASSERT_EQ(it->text, "bar");
     ASSERT_EQ(++it, tokens.end());
 }
 
@@ -37,10 +40,10 @@ TEST(csp_parser, verbatim_brace_text)
 
     ASSERT_NE(it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::verbatim);
-    ASSERT_EQ(it->text(), "foo{");
+    ASSERT_EQ(it->text, "foo{");
     ASSERT_NE(++it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::text);
-    ASSERT_EQ(it->text(), "bar");
+    ASSERT_EQ(it->text, "bar");
     ASSERT_EQ(++it, tokens.end());
 }
 
@@ -52,13 +55,13 @@ TEST(csp_parser, verbatim_text_verbatim)
 
     ASSERT_NE(it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::verbatim);
-    ASSERT_EQ(it->text(), "foo");
+    ASSERT_EQ(it->text, "foo");
     ASSERT_NE(++it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::text);
-    ASSERT_EQ(it->text(), "bar");
+    ASSERT_EQ(it->text, "bar");
     ASSERT_NE(++it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::verbatim);
-    ASSERT_EQ(it->text(), "baz");
+    ASSERT_EQ(it->text, "baz");
     ASSERT_EQ(++it, tokens.end());
 }
 
@@ -70,13 +73,13 @@ TEST(csp_parser, verbatim_brace_text_brace_verbatim)
 
     ASSERT_NE(it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::verbatim);
-    ASSERT_EQ(it->text(), "foo{");
+    ASSERT_EQ(it->text, "foo{");
     ASSERT_NE(++it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::text);
-    ASSERT_EQ(it->text(), "bar");
+    ASSERT_EQ(it->text, "bar");
     ASSERT_NE(++it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::verbatim);
-    ASSERT_EQ(it->text(), "}baz");
+    ASSERT_EQ(it->text, "}baz");
     ASSERT_EQ(++it, tokens.end());
 }
 
@@ -99,7 +102,7 @@ TEST(csp_parser, empty_filter_placeholder)
 
     ASSERT_NE(it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::placeholder_filter);
-    ASSERT_EQ(it->text(), "");
+    ASSERT_EQ(it->text, "");
     ASSERT_NE(++it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::placeholder_end);
     ASSERT_EQ(++it, tokens.end());
@@ -113,7 +116,7 @@ TEST(csp_parser, filter_placeholder)
 
     ASSERT_NE(it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::placeholder_filter);
-    ASSERT_EQ(it->text(), "foo");
+    ASSERT_EQ(it->text, "foo");
     ASSERT_NE(++it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::placeholder_end);
     ASSERT_EQ(++it, tokens.end());
@@ -127,7 +130,7 @@ TEST(csp_parser, escape_placeholder)
 
     ASSERT_NE(it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::placeholder_argument);
-    ASSERT_EQ(it->text(), "\"$\"");
+    ASSERT_EQ(it->text, "\"$\"");
     ASSERT_NE(++it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::placeholder_end);
     ASSERT_EQ(++it, tokens.end());
@@ -141,7 +144,7 @@ TEST(csp_parser, simple_placeholder)
 
     ASSERT_NE(it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::placeholder_argument);
-    ASSERT_EQ(it->text(), "foo");
+    ASSERT_EQ(it->text, "foo");
     ASSERT_NE(++it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::placeholder_end);
     ASSERT_EQ(++it, tokens.end());
@@ -155,10 +158,10 @@ TEST(csp_parser, format_placeholder)
 
     ASSERT_NE(it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::placeholder_argument);
-    ASSERT_EQ(it->text(), "\"{}\"");
+    ASSERT_EQ(it->text, "\"{}\"");
     ASSERT_NE(++it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::placeholder_argument);
-    ASSERT_EQ(it->text(), " foo");
+    ASSERT_EQ(it->text, " foo");
     ASSERT_NE(++it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::placeholder_end);
     ASSERT_EQ(++it, tokens.end());
@@ -172,13 +175,13 @@ TEST(csp_parser, placeholder_lambda)
 
     ASSERT_NE(it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::placeholder_argument);
-    ASSERT_EQ(it->text(), "\"{}\"");
+    ASSERT_EQ(it->text, "\"{}\"");
     ASSERT_NE(++it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::placeholder_argument);
-    ASSERT_EQ(it->text(), " [foo]{ return foo + 1}()");
+    ASSERT_EQ(it->text, " [foo]{ return foo + 1}()");
     ASSERT_NE(++it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::placeholder_argument);
-    ASSERT_EQ(it->text(), " bar");
+    ASSERT_EQ(it->text, " bar");
     ASSERT_NE(++it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::placeholder_end);
     ASSERT_EQ(++it, tokens.end());
@@ -192,13 +195,13 @@ TEST(csp_parser, placeholder_filter)
 
     ASSERT_NE(it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::placeholder_argument);
-    ASSERT_EQ(it->text(), "\"{}\"");
+    ASSERT_EQ(it->text, "\"{}\"");
     ASSERT_NE(++it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::placeholder_argument);
-    ASSERT_EQ(it->text(), " foo + 1 ");
+    ASSERT_EQ(it->text, " foo + 1 ");
     ASSERT_NE(++it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::placeholder_filter);
-    ASSERT_EQ(it->text(), "bar");
+    ASSERT_EQ(it->text, "bar");
     ASSERT_NE(++it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::placeholder_end);
     ASSERT_EQ(++it, tokens.end());
@@ -212,12 +215,12 @@ TEST(csp_parser, format_cppline)
 
     ASSERT_NE(it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::verbatim);
-    ASSERT_EQ(it->text(), "for (auto i: list){\n");
+    ASSERT_EQ(it->text, "for (auto i: list){\n");
     ASSERT_NE(++it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::text);
-    ASSERT_EQ(it->text(), "foo ");
+    ASSERT_EQ(it->text, "foo ");
     ASSERT_NE(++it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::verbatim);
-    ASSERT_EQ(it->text(), "}\n");
+    ASSERT_EQ(it->text, "}\n");
     ASSERT_EQ(++it, tokens.end());
 }

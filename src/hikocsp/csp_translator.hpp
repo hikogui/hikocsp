@@ -1,4 +1,6 @@
-
+// Copyright Take Vos 2023.
+// Distributed under the Boost Software License, Version 1.0.
+// (See accompanying file LICENSE_1_0.txt or copy at https://www.boost.org/LICENSE_1_0.txt)
 
 #pragma once
 
@@ -34,26 +36,26 @@ template<std::input_iterator It, std::sentinel_for<It> ItEnd>
         auto const& token = *it;
         if (token.kind == csp_token_type::verbatim) {
             co_yield std::format("#line {}\n", token.line_nr + 1);
-            co_yield token.text();
+            co_yield token.text;
             co_yield "\n"s;
 
         } else if (token.kind == csp_token_type::text) {
             co_yield std::format("#line {}\n", token.line_nr + 1);
             co_yield "co_yield "s;
-            for (auto line_range : std::views::split(token.text_view(), "\n"sv)) {
+            for (auto line_range : std::views::split(token.text, "\n"s)) {
                 auto line = std::string_view{line_range.begin(), line_range.end()};
                 co_yield std::format("\"{}\"\n", encode_string_literal(line));
             }
             co_yield ";\n"s;
 
         } else if (token.kind == csp_token_type::placeholder_argument) {
-            arguments.emplace_back(token.text());
+            arguments.emplace_back(token.text);
 
         } else if (token.kind == csp_token_type::placeholder_filter) {
-            if (token.text().empty()) {
+            if (token.empty()) {
                 filters.emplace_back("[](auto &x){return x;}");
             } else {
-                filters.emplace_back(token.text());
+                filters.emplace_back(token.text);
             }
 
         } else if (token.kind == csp_token_type::placeholder_end) {

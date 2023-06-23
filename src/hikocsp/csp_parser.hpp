@@ -1,9 +1,6 @@
-
-/** @file csp_parser.hpp
- *
- *
-
- */
+// Copyright Take Vos 2023.
+// Distributed under the Boost Software License, Version 1.0.
+// (See accompanying file LICENSE_1_0.txt or copy at https://www.boost.org/LICENSE_1_0.txt)
 
 #pragma once
 
@@ -54,16 +51,14 @@ template<std::random_access_iterator It>
         case '}':
             if (state == state_type::found_dollar) {
                 // The close-brace belongs to a C++ line-verbatim.
-                r.first = first;
-                r.last = it - 1;
+                r.text = std::string{first, it - 1};
                 first = it;
                 line_nr += num_lines;
                 after = parse_csp_after_text::line_verbatim;
                 return r;
 
             } else if (state == state_type::found_cbrace) {
-                r.first = first;
-                r.last = it - 1;
+                r.text = std::string{first, it - 1};
                 first = it + 1;
                 line_nr += num_lines;
                 after = parse_csp_after_text::verbatim;
@@ -77,8 +72,7 @@ template<std::random_access_iterator It>
 
         case '{':
             if (state == state_type::found_dollar) {
-                r.first = first;
-                r.last = it - 1;
+                r.text = std::string{first, it - 1};
                 first = it + 1;
                 line_nr += num_lines;
                 after = parse_csp_after_text::placeholder;
@@ -92,8 +86,7 @@ template<std::random_access_iterator It>
 
         default:
             if (state == state_type::found_dollar) {
-                r.first = first;
-                r.last = it - 1;
+                r.text = std::string{first, it - 1};
                 first = it;
                 line_nr += num_lines;
                 after = parse_csp_after_text::line_verbatim;
@@ -104,8 +97,7 @@ template<std::random_access_iterator It>
         state = state_type::idle;
     }
 
-    r.first = first;
-    r.last = last;
+    r.text = std::string{first, last};
     first = last;
     line_nr += num_lines;
     after = parse_csp_after_text::verbatim;
@@ -173,8 +165,7 @@ parse_csp_expression(It& first, It last, std::filesystem::path const& path, int&
         case ']':
             if (not quote) {
                 if (stack_size == 0) {
-                    r.first = first;
-                    r.last = it;
+                    r.text = std::string{first, it};
                     line_nr += num_lines;
                     first = it;
                     return r;
@@ -195,8 +186,7 @@ parse_csp_expression(It& first, It last, std::filesystem::path const& path, int&
         case '@':
         case '$':
             if (not quote and stack_size == 0) {
-                r.first = first;
-                r.last = it;
+                r.text = std::string{first, it};
                 line_nr += num_lines;
                 first = it;
                 return r;
@@ -223,16 +213,14 @@ template<std::random_access_iterator It>
 
     for (auto it = first; it != last; ++it) {
         if (*it == '\n') {
-            r.first = first;
-            r.last = it + 1;
+            r.text = std::string{first, it + 1};
             ++line_nr;
             first = it + 1;
             return r;
         }
     }
 
-    r.first = first;
-    r.last = last;
+    r.text = std::string{first, last};
     first = last;
     return r;
 }
@@ -290,8 +278,7 @@ template<std::random_access_iterator It>
             if (not quote and num_obrace >= 2) {
                 // At this point we just beyond the last two open-braces '{{'
                 // in a sequence of open-braces.
-                r.first = first;
-                r.last = it - 2;
+                r.text = std::string{first, it - 2};
                 line_nr += num_lines;
                 first = it;
                 return r;
@@ -303,8 +290,7 @@ template<std::random_access_iterator It>
     }
 
     // No double open-braces '{{' found in str.
-    r.first = first;
-    r.last = last;
+    r.text = std::string{first, last};
     line_nr += num_lines;
     first = last;
     return r;

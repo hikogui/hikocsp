@@ -1,3 +1,6 @@
+// Copyright Take Vos 2023.
+// Distributed under the Boost Software License, Version 1.0.
+// (See accompanying file LICENSE_1_0.txt or copy at https://www.boost.org/LICENSE_1_0.txt)
 
 #pragma once
 
@@ -9,8 +12,7 @@ enum class csp_token_type { verbatim, placeholder_argument, placeholder_filter, 
 
 template<std::random_access_iterator It>
 struct csp_token {
-    It first;
-    It last;
+    std::string text;
     int line_nr;
     csp_token_type kind;
 
@@ -20,28 +22,18 @@ struct csp_token {
     constexpr csp_token& operator=(csp_token const&) noexcept = default;
     constexpr csp_token& operator=(csp_token&&) noexcept = default;
 
-    constexpr csp_token() noexcept : first(), last(), line_nr(), kind() {}
+    constexpr csp_token() noexcept : text(), line_nr(), kind() {}
 
     constexpr csp_token(csp_token_type kind, int line_nr, It first, It last) noexcept :
-        first(first), last(last), line_nr(line_nr), kind(kind)
+        text(first, last), line_nr(line_nr), kind(kind)
     {
     }
 
     constexpr csp_token(csp_token_type kind, int line_nr) noexcept : csp_token(kind, line_nr, {}, {}) {}
 
-    [[nodiscard]] constexpr std::string text() const noexcept
-    {
-        return std::string{first, last};
-    }
-
-    [[nodiscard]] constexpr std::string_view text_view() const noexcept
-    {
-        return std::string_view{first, last};
-    }
-
     [[nodiscard]] constexpr bool empty() const noexcept
     {
-        return first == last;
+        return text.empty();
     }
 
     explicit operator bool() const noexcept

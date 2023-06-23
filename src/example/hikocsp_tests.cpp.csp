@@ -1,0 +1,31 @@
+// Copyright Take Vos 2023.
+// Distributed under the Boost Software License, Version 1.0.
+// (See accompanying file LICENSE_1_0.txt or copy at https://www.boost.org/LICENSE_1_0.txt)
+
+#include "hikocsp/generator.hpp"
+#include <gtest/gtest.h>
+
+[[nodiscard]] generator<std::string> test1(std::vector<int> list, int a) noexcept
+{{{
+foo
+$for (auto x: list) {
+x=${x + a}, $
+$}
+bar
+}}}
+
+TEST(hikocsp_yield, test1)
+{
+    auto t = std::string{g.begin(), g.end()};
+    for (auto const &s: test(std::vector{1, 2, 3}, 5)) {
+        t += s;
+    }
+
+    auto const r = std::string{
+        "\nfoo\n"
+        "x=6, x=7, x=8, "
+        "bar\n"
+    };
+
+    ASSERT_EQ(t, s);
+}
