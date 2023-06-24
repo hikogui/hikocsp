@@ -1,10 +1,45 @@
 hikocsp - C++ Server Pages (CSP)
 ================================
+The introduction of `auto`, ranged based `for`-loops and `std::format()`
+makes the C++ language appropriate as a host language for text-templates;
+similar to PHP and JSP (Java Server Pages).
+
+Here is an example of a CSP file.
+- It starts in C++ mode.
+- Template-mode is entered at `{{` and exits at `}}`.
+- Placeholders `${}` are used to format C++ expressions.
+- A single C++ line starts with a `$` until the end of the line.
+- Filtering placeholders is done using the `` ` `` backtick inside a
+  placeholder. A placeholder with only filters sets the default filters.
+
+```
+#include <string>
+#include <format>
+#include <vector>
+#include <generator>
+#include "escape_functions.hpp"
+
+[[nodiscard]] std::generator<std::string> generate_page(std::vector<int> list, int b) noexcept
+{{{
+${`sgml_escape`email_escape}
+    <html>
+        <head><title>Page</title></head>
+        <body>
+        A list of values.
+            <li>
+            $for (auto value: list) {
+                <ul><a href="value_page?${value `url_escape}">${value} + ${b} = ${value + b}</a></ul>
+            $}
+            <li>
+            escape double close bracket: ${"}}"}
+            escape dollar: ${"$"}
+        </body>
+    </html> 
+}}}
+```
 
 hikocsp.exe usage
 -----------------
-
-### Synopsis
 ```
 hikocsp [ options ] filename.csp
 hikocsp [ options ] --input=filename.csp
@@ -109,35 +144,6 @@ $}
 
 Technically the `$` at the end-of-line will be interpreted as a verbatim C++
 line.
-
-Example
--------
-
-```
-#include <string>
-#include <format>
-#include <vector>
-#include "hikocsp/module.hpp"
-
-[[nodiscard]] std::generator<std::string> generate_page(std::vector<int> list, int b) noexcept
-{{{
-${`hi::sgml_escape`hi::email_escape}
-    <html>
-        <head><title>Page</title></head>
-        <body>
-        A list of values.
-            <li>
-            $for (auto value: list) {
-                <ul><a href="value_page?${value `hi::url_escape}">${value} + ${b} = ${value + b}</a></ul>
-            $}
-            <li>
-            escape double close bracket: ${"}}"}
-            escape dollar: ${"$"}
-        </body>
-    </html> 
-}}}
-
-```
 
 Syntax
 ------
