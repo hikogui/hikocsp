@@ -224,3 +224,55 @@ TEST(csp_parser, format_cppline)
     ASSERT_EQ(it->text, "}\n");
     ASSERT_EQ(++it, tokens.end());
 }
+
+TEST(csp_parser, example)
+{
+    using namespace std::literals;
+
+    auto s =
+        "[[nodiscard]] csp::generator<std::string> test1(std::vector<int> list, int a) noexcept\n"
+        "{{{\n"
+        "foo\n"
+        "$for(auto x : list) {\n"
+        "x=${x + a}, $\n"
+        "$}\n"
+        "bar\n"
+        "}}}\n"s;
+
+    auto tokens = csp::parse_csp(s, "<none>");
+    auto it = tokens.begin();
+
+    ASSERT_NE(it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token_type::verbatim);
+    ASSERT_EQ(it->text, "[[nodiscard]] csp::generator<std::string> test1(std::vector<int> list, int a) noexcept\n{");
+    ASSERT_NE(++it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token_type::text);
+    ASSERT_EQ(it->text, "\nfoo\n");
+    ASSERT_NE(++it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token_type::verbatim);
+    ASSERT_EQ(it->text, "for(auto x : list) {\n");
+    ASSERT_NE(++it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token_type::text);
+    ASSERT_EQ(it->text, "x=");
+    ASSERT_NE(++it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token_type::placeholder_argument);
+    ASSERT_EQ(it->text, "x + a");
+    ASSERT_NE(++it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token_type::placeholder_end);
+    ASSERT_NE(++it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token_type::text);
+    ASSERT_EQ(it->text, ", ");
+    ASSERT_NE(++it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token_type::verbatim);
+    ASSERT_EQ(it->text, "\n");
+    ASSERT_NE(++it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token_type::verbatim);
+    ASSERT_EQ(it->text, "}\n");
+    ASSERT_NE(++it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token_type::text);
+    ASSERT_EQ(it->text, "bar\n");
+    ASSERT_NE(++it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token_type::verbatim);
+    ASSERT_EQ(it->text, "}\n");
+    ASSERT_EQ(++it, tokens.end());
+}

@@ -4,8 +4,9 @@
 
 #include "hikocsp/generator.hpp"
 #include <gtest/gtest.h>
+#include <format>
 
-[[nodiscard]] generator<std::string> test1(std::vector<int> list, int a) noexcept
+[[nodiscard]] csp::generator<std::string> page1(std::vector<int> list, int a) noexcept
 {{{
 foo
 $for (auto x: list) {
@@ -14,18 +15,18 @@ $}
 bar
 }}}
 
-TEST(hikocsp_yield, test1)
+TEST(examples, page1_yield)
 {
-    auto t = std::string{g.begin(), g.end()};
-    for (auto const &s: test(std::vector{1, 2, 3}, 5)) {
-        t += s;
+    auto result = std::string{};
+    for (auto const &s: page1(std::vector{1, 2, 3}, 5)) {
+        result += s;
     }
 
-    auto const r = std::string{
+    auto const expected = std::string{
         "\nfoo\n"
         "x=6, x=7, x=8, "
         "bar\n"
     };
 
-    ASSERT_EQ(t, s);
+    ASSERT_EQ(result, expected);
 }

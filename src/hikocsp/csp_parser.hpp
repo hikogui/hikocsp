@@ -81,6 +81,15 @@ template<std::random_access_iterator It>
             break;
 
         case '\n':
+            if (state == state_type::found_dollar) {
+                // Escape line-feed. Actually is verbatim-line.
+                // Make sure the \n is not counted here in num_lines.
+                r.text = std::string{first, it - 1};
+                first = it;
+                line_nr += num_lines;
+                after = parse_csp_after_text::line_verbatim;
+                return r;
+            }
             ++num_lines;
             break;
 
@@ -240,7 +249,7 @@ template<std::random_access_iterator It>
 {
     auto quote = '\0';
     bool escape = false;
-    int num_obrace = 0;
+    bool obrace = false;
     int num_lines = 0;
     auto r = csp_token<It>{csp_token_type::verbatim, line_nr};
 
@@ -260,33 +269,38 @@ template<std::random_access_iterator It>
         case '\\':
             if (not escape) {
                 escape = true;
-                num_obrace = 0;
+                obrace = false;
                 continue;
             }
             break;
 
         case '{':
-            ++num_obrace;
-            escape = false;
-            continue;
+            if (not quote) {
+                if (not obrace) {
+                    obrace = true;
+                    escape = false;
+                    continue;
+                } else {
+                    // Two consecutive open-braces; find last open brace.
+                    for (++it; it != last and *it == '{'; ++it) {}
+
+                    r.text = std::string{first, it - 2};
+                    line_nr += num_lines;
+                    first = it;
+                    return r;
+                }
+            }
+            break;
 
         case '\n':
             ++num_lines;
             break;
 
-        default:
-            if (not quote and num_obrace >= 2) {
-                // At this point we just beyond the last two open-braces '{{'
-                // in a sequence of open-braces.
-                r.text = std::string{first, it - 2};
-                line_nr += num_lines;
-                first = it;
-                return r;
-            }
+        default:;
         }
 
         escape = false;
-        num_obrace = 0;
+        obrace = false;
     }
 
     // No double open-braces '{{' found in str.

@@ -34,6 +34,8 @@ if(BUILD_TESTING)
 endif()
 
 set(HIKOCSP_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/hikocsp")
+set(HIKOCSP_EXAMPLES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/examples")
+
 add_library(hikocsp INTERFACE)
 set_target_properties(hikocsp PROPERTIES DEBUG_POSTFIX "d")
 target_compile_features(hikocsp INTERFACE cxx_std_20)
@@ -84,4 +86,20 @@ if(BUILD_TESTING)
         ${HIKOCSP_SOURCE_DIR}/option_parser_tests.cpp
     )
     gtest_discover_tests(hikocsp_tests DISCOVERY_MODE PRE_TEST)
+
+    add_executable(hikocsp_examples)
+    target_link_libraries(hikocsp_examples PRIVATE gtest_main hikocsp)
+    target_include_directories(hikocsp_examples PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+
+    target_sources(hikocsp_examples PRIVATE
+        ${HIKOCSP_EXAMPLES_DIR}/hikocsp_tests.cpp
+    )
+    gtest_discover_tests(hikocsp_examples DISCOVERY_MODE PRE_TEST)
+
+    add_custom_command(
+        OUTPUT "${HIKOCSP_EXAMPLES_DIR}/hikocsp_tests.cpp"
+        COMMAND hikocsp "${HIKOCSP_EXAMPLES_DIR}/hikocsp_tests.cpp.csp"
+        DEPENDS hikocsp-bin "${HIKOCSP_EXAMPLES_DIR}/hikocsp_tests.cpp.csp"
+    )
+
 endif()

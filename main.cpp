@@ -10,8 +10,8 @@ inline int verbose = 0;
 inline std::filesystem::path output_path = {};
 inline std::filesystem::path input_path = {};
 
-void print_help() {
-    // clang-format off
+void print_help()
+{
     std::cerr << std::format(
         "hikocsp is an application to translate a CSP template into C++ code.\n"
         "\n"
@@ -27,9 +27,7 @@ void print_help() {
         "  -o, --output=<path> The path to the generated code.\n"
         "\n"
         "If the output-path is not specified it is constructed from the\n"
-        "input-path after removing the extension.\n"
-    );
-    //clang-format on
+        "input-path after removing the extension.\n");
 }
 
 int parse_options(int argc, char *argv[])
@@ -79,11 +77,11 @@ int parse_options(int argc, char *argv[])
     }
 
     if (output_path.empty()) {
-        if (not output_path.has_extension())
+        if (not input_path.has_extension()) {
             std::cerr << std::format("Can not produce output-path from intput-path {}.\n", input_path.string());
-        return -1;
+            return -1;
+        }
 
-    } else {
         output_path = input_path.parent_path() / input_path.stem();
         if (verbose > 0) {
             std::cerr << std::format(
@@ -94,7 +92,7 @@ int parse_options(int argc, char *argv[])
     return 0;
 }
 
-[[nodiscard]] std::string read_file(std::filesystem::path const &path)
+[[nodiscard]] std::string read_file(std::filesystem::path const& path)
 {
     auto f = std::ifstream(path);
     if (not f.is_open()) {
@@ -117,12 +115,12 @@ int main(int argc, char *argv[])
         auto tokens = csp::parse_csp(text, input_path);
 
         auto f = std::ofstream(output_path);
-        for (auto const &str: csp::translate_csp(tokens.begin(), tokens.end(), input_path)) {
+        for (auto const& str : csp::translate_csp(tokens.begin(), tokens.end(), input_path)) {
             f << str;
         }
         f.close();
 
-    } catch (std::exception const &e) {
+    } catch (std::exception const& e) {
         std::cerr << std::format("Could not translate template: {}.", e.what());
         return -1;
     }
