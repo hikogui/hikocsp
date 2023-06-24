@@ -9,6 +9,9 @@
 inline int verbose = 0;
 inline std::filesystem::path output_path = {};
 inline std::filesystem::path input_path = {};
+inline bool enable_line = true;
+inline std::optional<std::string> callback_name = std::nullopt;
+inline std::optional<std::string> append_name = std::nullopt;
 
 void print_help()
 {
@@ -25,9 +28,17 @@ void print_help()
         "  -v, --verbose       Increase verbosity level.\n"
         "  -i, --input=<path>  The path to the template file.\n"
         "  -o, --output=<path> The path to the generated code.\n"
+        "  --callback=<name>   Use a callback function to sink template-text.\n"
+        "  --append=<name>     Use a variable to append template-text to.\n"
+        "  --disable-line      Disable generation of #line directives.\n"           
         "\n"
         "If the output-path is not specified it is constructed from the\n"
-        "input-path after removing the extension.\n");
+        "input-path after removing the extension.\n"
+        "\n"
+        "By default the generated code will co_yield the template-text.\n"
+        "You may also use the --callback or --append option to change the\n"
+        "way template-text is passed to the caller of the template generating\n"
+        "function.\n");
 }
 
 int parse_options(int argc, char *argv[])
@@ -52,6 +63,30 @@ int parse_options(int argc, char *argv[])
         } else if (option == "-i" or option == "--input") {
             if (option.argument) {
                 input_path = *option.argument;
+            } else {
+                std::cerr << std::format("Missing argument for : {}\n", to_string(option));
+                return -1;
+            }
+
+        } else if (option == "--disable-line") {
+            if (not option.argument) {
+                enable_line = false;
+            } else {
+                std::cerr << std::format("Unexpected argument for : {}\n", to_string(option));
+                return -1;
+            }
+
+        } else if (option == "--callback") {
+            if (option.argument) {
+                callback_name = *option.argument;
+            } else {
+                std::cerr << std::format("Missing argument for : {}\n", to_string(option));
+                return -1;
+            }
+
+        } else if (option == "--append") {
+            if (option.argument) {
+                append_name = *option.argument;
             } else {
                 std::cerr << std::format("Missing argument for : {}\n", to_string(option));
                 return -1;
@@ -114,8 +149,13 @@ int main(int argc, char *argv[])
         auto text = read_file(input_path);
         auto tokens = csp::parse_csp(text, input_path);
 
+        auto config = csp::translate_csp_config{};
+        config.enable_line = enable_line;
+        config.callback_name = callback_name;
+        config.append_name = append_name;
+
         auto f = std::ofstream(output_path);
-        for (auto const& str : csp::translate_csp(tokens.begin(), tokens.end(), input_path)) {
+        for (auto const& str : csp::translate_csp(tokens.begin(), tokens.end(), input_path, config)) {
             f << str;
         }
         f.close();

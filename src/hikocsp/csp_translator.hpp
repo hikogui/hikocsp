@@ -13,6 +13,7 @@
 #include <vector>
 #include <ranges>
 #include <iterator>
+#include <optional>
 
 namespace csp { inline namespace v1 {
 
@@ -101,8 +102,46 @@ std::string encode_string_literal(std::string_view str)
     return r;
 }
 
+struct translate_csp_config {
+    bool enable_line;
+    std::optional<std::string> callback_name;
+    std::optional<std::string> append_name;
+};
+
+[[nodiscard]] inline std::string translate_csp_yield(std::string_view str, translate_csp_config const& config) noexcept
+{
+    if (config.callback_name) {
+        return std::format("{}({});\n", *config.callback_name, str);
+    } else if (config.append_name) {
+        return std::format("{} += {};\n", *config.append_name, str);
+    } else {
+        return std::format("co_yield {};\n", str);
+    }
+}
+
+[[nodiscard]] inline std::optional<std::string>
+translate_csp_path(std::filesystem::path const& path, translate_csp_config const& config) noexcept
+{
+    if (config.enable_line) {
+        return std::format("#line 1 \"{}\"\n", path.generic_string());
+    } else {
+        return std::nullopt;
+    }
+}
+
+template<typename Token>
+[[nodiscard]] std::optional<std::string> translate_csp_line(Token const& token, translate_csp_config const& config) noexcept
+{
+    if (config.enable_line) {
+        return std::format("#line {}\n", token.line_nr);
+    } else {
+        return std::nullopt;
+    }
+}
+
 template<std::input_iterator It, std::sentinel_for<It> ItEnd>
-[[nodiscard]] generator<std::string> translate_csp(It first, ItEnd last, std::filesystem::path const& path) noexcept
+[[nodiscard]] generator<std::string>
+translate_csp(It first, ItEnd last, std::filesystem::path const& path, translate_csp_config const& config) noexcept
 {
     using namespace std::literals;
 
@@ -110,31 +149,37 @@ template<std::input_iterator It, std::sentinel_for<It> ItEnd>
     auto filters = std::vector<std::string>{};
     auto default_filters = std::vector<std::string>{};
 
-    co_yield std::format("#line 1 \"{}\"\n", path.generic_string());
+    if (auto x = translate_csp_path(path, config)) {
+        co_yield *x;
+    }
 
     for (auto it = first; it != last; ++it) {
         auto const& token = *it;
         if (token.kind == csp_token_type::verbatim) {
             if (not token.text.empty()) {
-                co_yield std::format("#line {}\n", token.line_nr + 1);
+                if (auto x = translate_csp_line(token, config)) {
+                    co_yield *x;
+                }
+
                 co_yield token.text;
                 if (token.text.back() != '\n') {
-                    co_yield "\n"s;
+                    co_yield "\n";
                 }
             }
 
         } else if (token.kind == csp_token_type::text) {
             if (not token.text.empty()) {
+                if (auto x = translate_csp_line(token, config)) {
+                    co_yield *x;
+                }
+
                 auto const num_lines = std::count(token.text.begin(), token.text.end(), '\n');
-
-                co_yield std::format("#line {}\n", token.line_nr + 1);
-
                 if (num_lines == 0 or (num_lines == 1 and token.text.back() == '\n')) {
                     // Only one line.
-                    co_yield std::format("co_yield \"{}\";\n", encode_string_literal(token.text));
+                    co_yield translate_csp_yield(std::format("\"{}\"", encode_string_literal(token.text)), config);
 
                 } else {
-                    co_yield "co_yield "s;
+                    auto str = std::string{};
 
                     auto prev_i = size_t{};
                     auto i = token.text.find('\n');
@@ -142,17 +187,17 @@ template<std::input_iterator It, std::sentinel_for<It> ItEnd>
                         ++i;
 
                         if (prev_i != 0) {
-                            co_yield "\n         ";
+                            str += "\n  ";
                         }
+                        str += std::format("\"{}\"", encode_string_literal(token.text.substr(prev_i, i - prev_i)));
 
-                        co_yield std::format("\"{}\"", encode_string_literal(token.text.substr(prev_i, i - prev_i)));
                         i = token.text.find('\n', prev_i = i);
                     }
 
                     if (prev_i != token.text.size()) {
-                        co_yield std::format("\n         \"{}\"", encode_string_literal(token.text.substr(prev_i)));
+                        str += std::format("\n  \"{}\"", encode_string_literal(token.text.substr(prev_i)));
                     }
-                    co_yield ";\n";
+                    co_yield translate_csp_yield(str, config);
                 }
             }
 
@@ -182,8 +227,11 @@ template<std::input_iterator It, std::sentinel_for<It> ItEnd>
                 filters.empty() and arguments.size() == 1 and arguments.front().front() == '"' and
                 arguments.front().back() == '"') {
                 // Escape.
-                co_yield std::format("#line {}\n", token.line_nr + 1);
-                co_yield std::format("co_yield {};\n", arguments.front());
+                if (auto x = translate_csp_line(token, config)) {
+                    co_yield *x;
+                }
+
+                co_yield translate_csp_yield(arguments.front(), config);
 
             } else {
                 if (filters.empty()) {
@@ -194,31 +242,36 @@ template<std::input_iterator It, std::sentinel_for<It> ItEnd>
                     arguments.emplace(arguments.begin(), "\"{}\"");
                 }
 
-                co_yield std::format("#line {}\n", token.line_nr + 1);
-                co_yield "co_yield "s;
-                for (auto& filter : std::views::reverse(filters)) {
-                    co_yield std::format("({})(", filter);
+                if (auto x = translate_csp_line(token, config)) {
+                    co_yield *x;
                 }
 
-                co_yield "std::format("s;
+                auto str = std::string{};
+                for (auto& filter : std::views::reverse(filters)) {
+                    str += std::format("({})(", filter);
+                }
+
+                str += "std::format("s;
                 auto is_first_argument = true;
                 for (auto& argument : arguments) {
                     if (not is_first_argument) {
-                        co_yield ", ";
+                        str += ", ";
                     }
-                    co_yield std::format("({})", argument);
+                    str += std::format("({})", argument);
                     is_first_argument = false;
                 }
-                co_yield ")"s;
+                str += ")"s;
 
                 for (auto& filter : filters) {
-                    co_yield ")"s;
+                    str += ")"s;
                 }
-                co_yield ";\n"s;
+
+                co_yield translate_csp_yield(str, config);
             }
 
             arguments.clear();
             filters.clear();
+
         } else {
             std::terminate();
         }

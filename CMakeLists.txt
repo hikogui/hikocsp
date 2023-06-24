@@ -92,14 +92,28 @@ if(BUILD_TESTING)
     target_include_directories(hikocsp_examples PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
     target_sources(hikocsp_examples PRIVATE
-        ${HIKOCSP_EXAMPLES_DIR}/hikocsp_tests.cpp
+        ${HIKOCSP_EXAMPLES_DIR}/hikocsp_yield_tests.cpp
+        ${HIKOCSP_EXAMPLES_DIR}/hikocsp_append_tests.cpp
+        ${HIKOCSP_EXAMPLES_DIR}/hikocsp_callback_tests.cpp
     )
     gtest_discover_tests(hikocsp_examples DISCOVERY_MODE PRE_TEST)
 
     add_custom_command(
-        OUTPUT "${HIKOCSP_EXAMPLES_DIR}/hikocsp_tests.cpp"
-        COMMAND hikocsp "${HIKOCSP_EXAMPLES_DIR}/hikocsp_tests.cpp.csp"
-        DEPENDS hikocsp-bin "${HIKOCSP_EXAMPLES_DIR}/hikocsp_tests.cpp.csp"
+        OUTPUT "${HIKOCSP_EXAMPLES_DIR}/hikocsp_yield_tests.cpp"
+        COMMAND hikocsp "${HIKOCSP_EXAMPLES_DIR}/hikocsp_yield_tests.cpp.csp"
+        DEPENDS hikocsp-bin "${HIKOCSP_EXAMPLES_DIR}/hikocsp_yield_tests.cpp.csp"
+    )
+
+    add_custom_command(
+        OUTPUT "${HIKOCSP_EXAMPLES_DIR}/hikocsp_append_tests.cpp"
+        COMMAND hikocsp "--append=out" "${HIKOCSP_EXAMPLES_DIR}/hikocsp_append_tests.cpp.csp"
+        DEPENDS hikocsp-bin "${HIKOCSP_EXAMPLES_DIR}/hikocsp_append_tests.cpp.csp"
+    )
+
+    add_custom_command(
+        OUTPUT "${HIKOCSP_EXAMPLES_DIR}/hikocsp_callback_tests.cpp"
+        COMMAND hikocsp "--callback=sink" "${HIKOCSP_EXAMPLES_DIR}/hikocsp_callback_tests.cpp.csp"
+        DEPENDS hikocsp-bin "${HIKOCSP_EXAMPLES_DIR}/hikocsp_callback_tests.cpp.csp"
     )
 
 endif()

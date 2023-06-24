@@ -83,6 +83,18 @@ TEST(csp_parser, verbatim_brace_text_brace_verbatim)
     ASSERT_EQ(++it, tokens.end());
 }
 
+TEST(csp_parser, escape_dollar)
+{
+    auto s = std::string{"{{$$"};
+    auto tokens = csp::parse_csp(s, "<none>");
+    auto it = tokens.begin();
+
+    ASSERT_NE(it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token_type::text);
+    ASSERT_EQ(it->text, "$");
+    ASSERT_EQ(++it, tokens.end());
+}
+
 TEST(csp_parser, empty_placeholder)
 {
     auto s = std::string{"{{${}"};
@@ -234,7 +246,7 @@ TEST(csp_parser, example)
         "{{{\n"
         "foo\n"
         "$for(auto x : list) {\n"
-        "x=${x + a}, $\n"
+        "x=${x + a}$$, $\n"
         "$}\n"
         "bar\n"
         "}}}\n"s;
@@ -259,6 +271,9 @@ TEST(csp_parser, example)
     ASSERT_EQ(it->text, "x + a");
     ASSERT_NE(++it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::placeholder_end);
+    ASSERT_NE(++it, tokens.end());
+    ASSERT_EQ(it->kind, csp::csp_token_type::text);
+    ASSERT_EQ(it->text, "$");
     ASSERT_NE(++it, tokens.end());
     ASSERT_EQ(it->kind, csp::csp_token_type::text);
     ASSERT_EQ(it->text, ", ");

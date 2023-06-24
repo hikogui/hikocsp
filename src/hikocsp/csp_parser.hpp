@@ -19,7 +19,7 @@
 namespace csp { inline namespace v1 {
 namespace detail {
 
-enum class parse_csp_after_text : uint8_t { placeholder, line_verbatim, verbatim };
+enum class parse_csp_after_text : uint8_t { placeholder, line_verbatim, verbatim, text };
 
 /** Find the next token
  *
@@ -45,8 +45,18 @@ template<std::random_access_iterator It>
     for (auto it = first; it != last; ++it) {
         switch (*it) {
         case '$':
-            state = state_type::found_dollar;
-            continue;
+            if (state == state_type::found_dollar) {
+                // Escape dollar. This includes the first dollar, but not second dollar.
+                r.text = std::string{first, it};
+                first = it + 1;
+                line_nr += num_lines;
+                after = parse_csp_after_text::text;
+                return r;
+
+            } else {
+                state = state_type::found_dollar;
+                continue;
+            }
 
         case '}':
             if (state == state_type::found_dollar) {
@@ -315,7 +325,7 @@ template<std::random_access_iterator It>
 template<std::random_access_iterator It>
 generator<csp_token<It>> parse_csp(It first, It last, std::filesystem::path const& path)
 {
-    int line_nr = 0;
+    int line_nr = 1;
 
     while (first != last) {
         if (auto const token = detail::parse_csp_verbatim(first, last, line_nr)) {
@@ -338,7 +348,11 @@ generator<csp_token<It>> parse_csp(It first, It last, std::filesystem::path cons
                     co_yield token;
                 }
 
-            } else {
+            } else if (after == detail::parse_csp_after_text::text) {
+                // Continue parsing text, found an escape.
+                continue;
+
+            } else if (after == detail::parse_csp_after_text::placeholder) {
                 // Found placeholder
                 auto num_arguments = 0;
                 auto is_filter = false;
@@ -370,6 +384,9 @@ generator<csp_token<It>> parse_csp(It first, It last, std::filesystem::path cons
                         is_filter = false;
                     }
                 }
+
+            } else {
+                std::terminate();
             }
         }
     }

@@ -6,25 +6,26 @@
 #include <gtest/gtest.h>
 #include <format>
 
-[[nodiscard]] csp::generator<std::string> page1(std::vector<int> list, int a) noexcept
-{{{
+[[nodiscard]] constexpr std::string append_page(std::vector<int> list, int a) noexcept
+{
+    auto out = std::string{};
+{{
 foo
 $for (auto x: list) {
-x=${x + a}, $
+x=${x + a}$$, $
 $}
 bar
-}}}
+}}
+    return out;
+}
 
-TEST(examples, page1_yield)
+TEST(append_example, append_page)
 {
-    auto result = std::string{};
-    for (auto const &s: page1(std::vector{1, 2, 3}, 5)) {
-        result += s;
-    }
+    auto result = append_page(std::vector{1, 2, 3}, 5);
 
     auto const expected = std::string{
         "\nfoo\n"
-        "x=6, x=7, x=8, "
+        "x=6$, x=7$, x=8$, "
         "bar\n"
     };
 
