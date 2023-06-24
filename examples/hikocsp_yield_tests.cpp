@@ -8,40 +8,57 @@
 #include <gtest/gtest.h>
 #include <format>
 
+[[nodiscard]] constexpr std::string reverse_filter(std::string str) noexcept
+{
+    std::reverse(str.begin(), str.end());
+    return str;
+}
+
+[[nodiscard]] constexpr std::string duplicate_filter(std::string str) noexcept
+{
+    return str + str;
+}
+
 [[nodiscard]] csp::generator<std::string> yield_page(std::vector<int> list, int a) noexcept
 {
-#line 10
+#line 21
 co_yield "\n"
   "foo\n";
-#line 12
+#line 23
 for (auto x: list) {
-#line 13
-co_yield "x=";
-#line 13
-co_yield std::format(("{}"), (x + a));
-#line 13
-co_yield "\x24";
-#line 13
-co_yield ", ";
-#line 13
-
-#line 14
+#line 24
+co_yield "x + a = ";
+#line 24
+co_yield (reverse_filter)(std::format(("{}"), (x)));
+#line 24
+co_yield " + ";
+#line 24
+co_yield ([](auto const &x){return x;})(std::format(("{}"), (a)));
+#line 24
+co_yield " = ";
+#line 24
+co_yield (duplicate_filter)(std::format(("{}"), (x + a)));
+#line 24
+co_yield ",\n";
+#line 25
 }
-#line 15
+#line 26
 co_yield "bar\n";
-#line 16
+#line 27
 }
 
 TEST(yield_example, yield_page)
 {
     auto result = std::string{};
-    for (auto const &s: yield_page(std::vector{1, 2, 3}, 5)) {
+    for (auto const &s: yield_page(std::vector{12, 34, 56}, 42)) {
         result += s;
     }
 
     auto const expected = std::string{
         "\nfoo\n"
-        "x=6$, x=7$, x=8$, "
+        "x + a = 21 + 42 = 5454,\n"
+        "x + a = 43 + 42 = 7676,\n"
+        "x + a = 65 + 42 = 9898,\n"
         "bar\n"
     };
 

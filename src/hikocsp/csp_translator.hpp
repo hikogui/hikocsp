@@ -206,7 +206,7 @@ translate_csp(It first, ItEnd last, std::filesystem::path const& path, translate
 
         } else if (token.kind == csp_token_type::placeholder_filter) {
             if (token.empty()) {
-                filters.emplace_back("[](auto &x){return x;}");
+                filters.emplace_back("[](auto const &x){return x;}");
             } else {
                 filters.emplace_back(token.text);
             }
