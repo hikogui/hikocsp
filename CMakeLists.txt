@@ -95,6 +95,7 @@ if(BUILD_TESTING)
         ${HIKOCSP_EXAMPLES_DIR}/hikocsp_yield_tests.cpp
         ${HIKOCSP_EXAMPLES_DIR}/hikocsp_append_tests.cpp
         ${HIKOCSP_EXAMPLES_DIR}/hikocsp_callback_tests.cpp
+        ${HIKOCSP_EXAMPLES_DIR}/hikocsp_no_line_tests.cpp
     )
     gtest_discover_tests(hikocsp_examples DISCOVERY_MODE PRE_TEST)
 
@@ -114,6 +115,12 @@ if(BUILD_TESTING)
         OUTPUT "${HIKOCSP_EXAMPLES_DIR}/hikocsp_callback_tests.cpp"
         COMMAND hikocsp "--callback=sink" "${HIKOCSP_EXAMPLES_DIR}/hikocsp_callback_tests.cpp.csp"
         DEPENDS hikocsp-bin "${HIKOCSP_EXAMPLES_DIR}/hikocsp_callback_tests.cpp.csp"
+    )
+
+    add_custom_command(
+        OUTPUT "${HIKOCSP_EXAMPLES_DIR}/hikocsp_no_line_tests.cpp"
+        COMMAND hikocsp "--disable-line" "${HIKOCSP_EXAMPLES_DIR}/hikocsp_no_line_tests.cpp.csp"
+        DEPENDS hikocsp-bin "${HIKOCSP_EXAMPLES_DIR}/hikocsp_no_line_tests.cpp.csp"
     )
 
 endif()

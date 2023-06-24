@@ -6,14 +6,19 @@ hikocsp.exe usage
 
 ### Synopsis
 ```
-hikocsp [ --output=filename.hpp ] filename.csp
+hikocsp [ options ] filename.csp
+hikocsp [ options ] --input=filename.csp
 hikocsp --help
 ```
 
-  Argument                | Description
- :----------------------- |:-----------------------
-  \-h, \-\-help           | Print the help page to stderr.
-  \-o, \-\-output=<path>  | The filename of the result. Otherwise stdout is used.
+  Argument                 | Description
+ :------------------------ |:-----------------------
+  \-h, \-\-help            | Print the help page to stderr.
+  \-o, \-\-output=\<path\> | The filename of the result.
+  \-i, \-\-input=\<path\>  | The filename of the result. Otherwise stdout is used.
+  \-\-append=\<name\>      | Generate code that appends text to the `name` variable.
+  \-\-callback=\<name\>    | Generate code that passed text to the callback function `name()`.
+  \-\-disable-line         | Disable generation of #line directives.
   
 CSP Template format
 -------------------
@@ -78,15 +83,19 @@ C++ expression which resolves into a callable object. An empty filter expression
 following lambda:
  - `[](auto const &x) { return x; }`.
 
+### Escape dollar
+To escape a dollar, use a double dollar `$$`.
+
 ### C++ line
 A single line of verbatim C++ code can be use inside a text-block.
 It starts with a `$` and ends in a line-feed `\n`.
 The line of C++ code is directly copied into the generated code.
 
-A C++ line can not start with a open-brace `{` character. If you
+A C++ line can't start with a open-brace `{`  or dollar `$` character. If you
 need to use the open-brace then use an extra white space `$ {` to
-differentiate with a placeholder that starts with `${`.
+differentiate from a placeholder that starts with `${`.
 
+### Supress line-feed
 The C++ line can also be used to consume the new-line character at the end
 of a piece of text to control when line-feeds that will appear in the output.
 For example to generate a sequence of numbers on a single line:
@@ -98,8 +107,8 @@ ${i}, $
 $}
 ```
 
-If there are only white-space characters in front of the '$' of a C++ line
-then those white-space characters are consumed.
+Technically the `$` at the end-of-line will be interpreted as a verbatim C++
+line.
 
 Example
 -------
@@ -151,9 +160,11 @@ template := ( verbatim | text )*
 #
 verbatim := CHAR+
 
-text :=  '{{' ( CHAR+ | verbatim-line | placeholder )* '}}'
+text :=  '{{' ( CHAR+ | verbatim-line | placeholder | escape )* '}}'
 
 verbatim-line := '$' CHAR* '\n'
+
+escape := '$$'
 
 placeholder := '${' ( expression ( ',' expression )* )? ( '`' expression )* '}'
 
